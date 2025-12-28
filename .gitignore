@@ -21,3 +21,6 @@ Thumbs.db
 # Test
 coverage.out
 *.test
+
+# Development notes
+CLAUDE.md
