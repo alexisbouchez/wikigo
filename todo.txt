@@ -97,6 +97,6 @@
 - [ ] Periodic re-indexing for updates
 
 ### API
-- [ ] JSON API for package metadata
-- [ ] Search API endpoint
+- [x] JSON API for package metadata
+- [x] Search API endpoint
 - [ ] Badge generation endpoint (shields.io compatible)

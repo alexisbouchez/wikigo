@@ -180,6 +180,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Routes
 	mux.HandleFunc("/", s.handleHome)
 	mux.HandleFunc("/search", s.handleSearch)
+	mux.HandleFunc("/api/", s.handleAPI)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -310,6 +311,72 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error rendering search: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// handleAPI handles JSON API requests
+func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/")
+
+	if path == "" || path == "packages" {
+		// List all packages
+		w.Header().Set("Content-Type", "application/json")
+		var pkgList []map[string]string
+		for importPath, pkg := range s.packages {
+			pkgList = append(pkgList, map[string]string{
+				"import_path": importPath,
+				"name":        pkg.Name,
+				"synopsis":    pkg.Synopsis,
+			})
+		}
+		json.NewEncoder(w).Encode(pkgList)
+		return
+	}
+
+	if path == "search" {
+		query := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "application/json")
+		if query == "" {
+			json.NewEncoder(w).Encode([]map[string]string{})
+			return
+		}
+		queryLower := strings.ToLower(query)
+		var results []map[string]string
+		for _, pkg := range s.packages {
+			if strings.Contains(strings.ToLower(pkg.ImportPath), queryLower) ||
+				strings.Contains(strings.ToLower(pkg.Name), queryLower) ||
+				strings.Contains(strings.ToLower(pkg.Synopsis), queryLower) {
+				results = append(results, map[string]string{
+					"import_path": pkg.ImportPath,
+					"name":        pkg.Name,
+					"synopsis":    pkg.Synopsis,
+				})
+			}
+		}
+		json.NewEncoder(w).Encode(results)
+		return
+	}
+
+	// Try to find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "package not found"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(pkg)
 }
 
 // Template helper functions
