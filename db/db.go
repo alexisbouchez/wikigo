@@ -465,6 +465,102 @@ func (db *DB) migrate() error {
 			INSERT INTO rust_symbols_fts(docid, name, signature, doc)
 			VALUES (new.id, new.name, new.signature, new.doc);
 		END`,
+
+		// Python packages table
+		`CREATE TABLE IF NOT EXISTS python_packages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			version TEXT,
+			summary TEXT,
+			author TEXT,
+			author_email TEXT,
+			license TEXT,
+			home_page TEXT,
+			project_url TEXT,
+			pypi_url TEXT,
+			repository_url TEXT,
+			documentation_url TEXT,
+			requires_python TEXT,
+			downloads INTEGER DEFAULT 0,
+			keywords_json TEXT,
+			classifiers_json TEXT,
+			dependencies_json TEXT,
+			readme TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// Python symbols table
+		`CREATE TABLE IF NOT EXISTS python_symbols (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			signature TEXT,
+			package_id INTEGER NOT NULL,
+			package_name TEXT NOT NULL,
+			file_path TEXT,
+			line INTEGER DEFAULT 0,
+			public INTEGER DEFAULT 0,
+			doc TEXT,
+			FOREIGN KEY (package_id) REFERENCES python_packages(id) ON DELETE CASCADE
+		)`,
+
+		// Python packages FTS table
+		`CREATE VIRTUAL TABLE IF NOT EXISTS python_packages_fts USING fts4(
+			name,
+			summary,
+			author,
+			keywords,
+			content=python_packages,
+			tokenize=porter
+		)`,
+
+		// Python symbols FTS table
+		`CREATE VIRTUAL TABLE IF NOT EXISTS python_symbols_fts USING fts4(
+			name,
+			signature,
+			doc,
+			content=python_symbols,
+			tokenize=porter
+		)`,
+
+		// Triggers for Python packages FTS
+		`CREATE TRIGGER IF NOT EXISTS python_packages_ai AFTER INSERT ON python_packages BEGIN
+			INSERT INTO python_packages_fts(docid, name, summary, author, keywords)
+			VALUES (new.id, new.name, new.summary, new.author, new.keywords_json);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS python_packages_ad AFTER DELETE ON python_packages BEGIN
+			DELETE FROM python_packages_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS python_packages_au AFTER UPDATE ON python_packages BEGIN
+			DELETE FROM python_packages_fts WHERE docid = old.id;
+			INSERT INTO python_packages_fts(docid, name, summary, author, keywords)
+			VALUES (new.id, new.name, new.summary, new.author, new.keywords_json);
+		END`,
+
+		// Triggers for Python symbols FTS
+		`CREATE TRIGGER IF NOT EXISTS python_symbols_ai AFTER INSERT ON python_symbols BEGIN
+			INSERT INTO python_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS python_symbols_ad AFTER DELETE ON python_symbols BEGIN
+			DELETE FROM python_symbols_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS python_symbols_au AFTER UPDATE ON python_symbols BEGIN
+			DELETE FROM python_symbols_fts WHERE docid = old.id;
+			INSERT INTO python_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
+
+		// Indexes for Python
+		`CREATE INDEX IF NOT EXISTS idx_python_packages_name ON python_packages(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_python_symbols_package ON python_symbols(package_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_python_symbols_public ON python_symbols(public)`,
 	}
 
 	for _, migration := range migrations {
@@ -1609,4 +1705,245 @@ func (db *DB) GetRustCrateSymbols(crateID int64) ([]*RustSymbol, error) {
 		symbols = append(symbols, sym)
 	}
 	return symbols, rows.Err()
+}
+
+// PythonPackage represents a Python package from PyPI
+type PythonPackage struct {
+	ID               int64
+	Name             string
+	Version          string
+	Summary          string
+	Author           string
+	AuthorEmail      string
+	License          string
+	HomePage         string
+	ProjectURL       string
+	PyPIURL          string
+	RepositoryURL    string
+	DocumentationURL string
+	RequiresPython   string
+	Downloads        int
+	Keywords         []string
+	Classifiers      []string
+	Dependencies     []string
+	README           string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	IndexedAt        time.Time
+}
+
+// PythonSymbol represents a Python symbol
+type PythonSymbol struct {
+	ID          int64
+	Name        string
+	Kind        string
+	Signature   string
+	PackageID   int64
+	PackageName string
+	FilePath    string
+	Line        int
+	Public      bool
+	Doc         string
+}
+
+// UpsertPythonPackage inserts or updates a Python package
+func (db *DB) UpsertPythonPackage(pkg *PythonPackage) (int64, error) {
+	keywordsJSON, _ := json.Marshal(pkg.Keywords)
+	classifiersJSON, _ := json.Marshal(pkg.Classifiers)
+	dependenciesJSON, _ := json.Marshal(pkg.Dependencies)
+
+	result, err := db.conn.Exec(`
+		INSERT INTO python_packages (name, version, summary, author, author_email,
+			license, home_page, project_url, pypi_url, repository_url,
+			documentation_url, requires_python, downloads, keywords_json,
+			classifiers_json, dependencies_json, readme, updated_at, indexed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(name) DO UPDATE SET
+			version = excluded.version,
+			summary = excluded.summary,
+			author = excluded.author,
+			author_email = excluded.author_email,
+			license = excluded.license,
+			home_page = excluded.home_page,
+			project_url = excluded.project_url,
+			pypi_url = excluded.pypi_url,
+			repository_url = excluded.repository_url,
+			documentation_url = excluded.documentation_url,
+			requires_python = excluded.requires_python,
+			downloads = excluded.downloads,
+			keywords_json = excluded.keywords_json,
+			classifiers_json = excluded.classifiers_json,
+			dependencies_json = excluded.dependencies_json,
+			readme = excluded.readme,
+			updated_at = CURRENT_TIMESTAMP,
+			indexed_at = CURRENT_TIMESTAMP
+	`, pkg.Name, pkg.Version, pkg.Summary, pkg.Author, pkg.AuthorEmail,
+		pkg.License, pkg.HomePage, pkg.ProjectURL, pkg.PyPIURL, pkg.RepositoryURL,
+		pkg.DocumentationURL, pkg.RequiresPython, pkg.Downloads, string(keywordsJSON),
+		string(classifiersJSON), string(dependenciesJSON), pkg.README)
+
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		var pkgID int64
+		err = db.conn.QueryRow("SELECT id FROM python_packages WHERE name = ?", pkg.Name).Scan(&pkgID)
+		if err != nil {
+			return 0, err
+		}
+		return pkgID, nil
+	}
+
+	return id, nil
+}
+
+// GetPythonPackage retrieves a Python package by name
+func (db *DB) GetPythonPackage(name string) (*PythonPackage, error) {
+	var pkg PythonPackage
+	var keywordsJSON, classifiersJSON, dependenciesJSON sql.NullString
+
+	err := db.conn.QueryRow(`
+		SELECT id, name, version, summary, author, author_email, license,
+			home_page, project_url, pypi_url, repository_url, documentation_url,
+			requires_python, downloads, keywords_json, classifiers_json,
+			dependencies_json, readme, created_at, updated_at, indexed_at
+		FROM python_packages WHERE name = ?
+	`, name).Scan(&pkg.ID, &pkg.Name, &pkg.Version, &pkg.Summary, &pkg.Author,
+		&pkg.AuthorEmail, &pkg.License, &pkg.HomePage, &pkg.ProjectURL,
+		&pkg.PyPIURL, &pkg.RepositoryURL, &pkg.DocumentationURL,
+		&pkg.RequiresPython, &pkg.Downloads, &keywordsJSON, &classifiersJSON,
+		&dependenciesJSON, &pkg.README, &pkg.CreatedAt, &pkg.UpdatedAt, &pkg.IndexedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if keywordsJSON.Valid {
+		json.Unmarshal([]byte(keywordsJSON.String), &pkg.Keywords)
+	}
+	if classifiersJSON.Valid {
+		json.Unmarshal([]byte(classifiersJSON.String), &pkg.Classifiers)
+	}
+	if dependenciesJSON.Valid {
+		json.Unmarshal([]byte(dependenciesJSON.String), &pkg.Dependencies)
+	}
+
+	return &pkg, nil
+}
+
+// UpsertPythonSymbol inserts or updates a Python symbol
+func (db *DB) UpsertPythonSymbol(sym *PythonSymbol) error {
+	_, err := db.conn.Exec(`
+		INSERT OR REPLACE INTO python_symbols
+		(name, kind, signature, package_id, package_name, file_path, line, public, doc)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, sym.Name, sym.Kind, sym.Signature, sym.PackageID, sym.PackageName,
+		sym.FilePath, sym.Line, sym.Public, sym.Doc)
+
+	return err
+}
+
+// DeletePythonPackageSymbols deletes all symbols for a Python package
+func (db *DB) DeletePythonPackageSymbols(packageID int64) error {
+	_, err := db.conn.Exec("DELETE FROM python_symbols WHERE package_id = ?", packageID)
+	return err
+}
+
+// GetPythonPackageSymbols returns all public symbols for a Python package
+func (db *DB) GetPythonPackageSymbols(packageID int64) ([]*PythonSymbol, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, package_id, package_name, file_path, line, public, doc
+		FROM python_symbols WHERE package_id = ? AND public = 1
+		ORDER BY kind, name
+	`, packageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*PythonSymbol
+	for rows.Next() {
+		sym := &PythonSymbol{}
+		var doc sql.NullString
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature, &sym.PackageID,
+			&sym.PackageName, &sym.FilePath, &sym.Line, &sym.Public, &doc); err != nil {
+			return nil, err
+		}
+		sym.Doc = doc.String
+		symbols = append(symbols, sym)
+	}
+	return symbols, rows.Err()
+}
+
+// SearchPythonPackages searches for Python packages using FTS
+func (db *DB) SearchPythonPackages(query string, limit int) ([]*PythonPackage, error) {
+	if query == "" {
+		query = "*"
+	}
+
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, summary, author, license, downloads
+		FROM python_packages
+		WHERE id IN (
+			SELECT docid FROM python_packages_fts
+			WHERE python_packages_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []*PythonPackage
+	for rows.Next() {
+		pkg := &PythonPackage{}
+		if err := rows.Scan(&pkg.ID, &pkg.Name, &pkg.Version, &pkg.Summary,
+			&pkg.Author, &pkg.License, &pkg.Downloads); err != nil {
+			return nil, err
+		}
+		packages = append(packages, pkg)
+	}
+
+	return packages, nil
+}
+
+// SearchPythonSymbols searches for Python symbols using FTS
+func (db *DB) SearchPythonSymbols(query string, limit int) ([]*PythonSymbol, error) {
+	if query == "" {
+		query = "*"
+	}
+
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, package_name, file_path, line
+		FROM python_symbols
+		WHERE id IN (
+			SELECT docid FROM python_symbols_fts
+			WHERE python_symbols_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*PythonSymbol
+	for rows.Next() {
+		sym := &PythonSymbol{}
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature,
+			&sym.PackageName, &sym.FilePath, &sym.Line); err != nil {
+			return nil, err
+		}
+		symbols = append(symbols, sym)
+	}
+
+	return symbols, nil
 }

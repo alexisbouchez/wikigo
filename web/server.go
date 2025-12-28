@@ -538,6 +538,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/explain", s.handleExplain)
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
+	mux.HandleFunc("/pypi/", s.handlePythonPackage)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -898,6 +899,24 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// Search Python/PyPI packages
+			if lang == "" || lang == "python" || lang == "pypi" {
+				pyPkgs, err := s.db.SearchPythonPackages(query, 50)
+				if err != nil {
+					log.Printf("Python package search error in API: %v", err)
+				} else {
+					for _, pkg := range pyPkgs {
+						results = append(results, map[string]interface{}{
+							"import_path": "pypi/" + pkg.Name,
+							"name":        pkg.Name,
+							"synopsis":    pkg.Summary,
+							"lang":        "python",
+							"version":     pkg.Version,
+						})
+					}
+				}
+			}
+
 			json.NewEncoder(w).Encode(results)
 			return
 		}
@@ -1092,6 +1111,87 @@ func (s *Server) handleJSPackage(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "js_package.html", data); err != nil {
 		log.Printf("Error rendering JS package: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handlePythonPackage handles Python/PyPI package pages
+func (s *Server) handlePythonPackage(w http.ResponseWriter, r *http.Request) {
+	pkgName := strings.TrimPrefix(r.URL.Path, "/pypi/")
+	if pkgName == "" {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	if s.db == nil {
+		http.Error(w, "Database not available", http.StatusInternalServerError)
+		return
+	}
+
+	pkg, err := s.db.GetPythonPackage(pkgName)
+	if err != nil {
+		log.Printf("Error getting Python package: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if pkg == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	symbols, err := s.db.GetPythonPackageSymbols(pkg.ID)
+	if err != nil {
+		log.Printf("Error getting Python package symbols: %v", err)
+	}
+
+	// Group symbols by kind
+	type symbolGroup struct {
+		Kind    string
+		Symbols []*db.PythonSymbol
+	}
+	kindOrder := []string{"class", "function", "constant"}
+	groupMap := make(map[string][]*db.PythonSymbol)
+	for _, sym := range symbols {
+		groupMap[sym.Kind] = append(groupMap[sym.Kind], sym)
+	}
+	var symbolsByKind []symbolGroup
+	for _, kind := range kindOrder {
+		if syms, ok := groupMap[kind]; ok {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+	// Add remaining kinds
+	for kind, syms := range groupMap {
+		found := false
+		for _, k := range kindOrder {
+			if k == kind {
+				found = true
+				break
+			}
+		}
+		if !found {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+
+	data := struct {
+		Title         string
+		SearchQuery   string
+		Pkg           *PackageDoc
+		PyPkg         *db.PythonPackage
+		Symbols       []*db.PythonSymbol
+		SymbolsByKind []symbolGroup
+	}{
+		Title:         pkg.Name + " - PyPI package",
+		SearchQuery:   "",
+		Pkg:           nil,
+		PyPkg:         pkg,
+		Symbols:       symbols,
+		SymbolsByKind: symbolsByKind,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "python_package.html", data); err != nil {
+		log.Printf("Error rendering Python package: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
