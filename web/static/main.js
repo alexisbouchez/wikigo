@@ -34,6 +34,15 @@ document.addEventListener('DOMContentLoaded', function() {
         themeToggle.addEventListener('click', toggleTheme);
     }
 
+    // Mobile menu toggle
+    const menuBtn = document.getElementById('menuBtn');
+    const headerNav = document.getElementById('headerNav');
+    if (menuBtn && headerNav) {
+        menuBtn.addEventListener('click', () => {
+            headerNav.classList.toggle('open');
+        });
+    }
+
     // Initialize Prism syntax highlighting
     if (typeof Prism !== 'undefined') {
         Prism.highlightAll();
