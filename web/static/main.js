@@ -19,6 +19,16 @@ function toggleTheme() {
     }
 }
 
+function showImports() {
+    const popup = document.getElementById('importsPopup');
+    if (popup) popup.classList.add('open');
+}
+
+function hideImports() {
+    const popup = document.getElementById('importsPopup');
+    if (popup) popup.classList.remove('open');
+}
+
 function copyImportPath(btn) {
     const path = btn.dataset.path;
     navigator.clipboard.writeText(path).then(() => {
@@ -40,6 +50,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (menuBtn && headerNav) {
         menuBtn.addEventListener('click', () => {
             headerNav.classList.toggle('open');
+        });
+    }
+
+    // Imports popup - click outside to close
+    const importsPopup = document.getElementById('importsPopup');
+    if (importsPopup) {
+        importsPopup.addEventListener('click', (e) => {
+            if (e.target === importsPopup) {
+                hideImports();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && importsPopup.classList.contains('open')) {
+                hideImports();
+            }
         });
     }
 

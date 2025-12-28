@@ -6,7 +6,7 @@
 - [ ] Version badge with version selector dropdown
 - [ ] Published date display
 - [x] License detection and display (BSD-3-Clause, MIT, etc.)
-- [ ] Imports count with clickable popup showing import list
+- [x] Imports count with clickable popup showing import list
 - [ ] "Imported by" count (requires indexing ecosystem)
 
 ### Navigation

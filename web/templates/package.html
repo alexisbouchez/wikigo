@@ -20,9 +20,29 @@
             <code class="Package-importPath">{{.Pkg.ImportPath}}</code>
             <button class="Package-copyBtn" onclick="copyImportPath(this)" data-path="{{.Pkg.ImportPath}}">Copy</button>
         </div>
-        {{if .Pkg.License}}
         <div class="Package-meta">
+            {{if .Pkg.License}}
             <span class="Package-license" title="License">{{.Pkg.License}}</span>
+            {{end}}
+            {{if .Pkg.Imports}}
+            <button class="Package-imports" onclick="showImports()" title="View imports">
+                Imports: {{len .Pkg.Imports}}
+            </button>
+            {{end}}
+        </div>
+        {{if .Pkg.Imports}}
+        <div class="ImportsPopup" id="importsPopup">
+            <div class="ImportsPopup-content">
+                <div class="ImportsPopup-header">
+                    <h3>Imports ({{len .Pkg.Imports}})</h3>
+                    <button class="ImportsPopup-close" onclick="hideImports()">&times;</button>
+                </div>
+                <ul class="ImportsPopup-list">
+                    {{range .Pkg.Imports}}
+                    <li><a href="/{{.}}">{{.}}</a></li>
+                    {{end}}
+                </ul>
+            </div>
         </div>
         {{end}}
     </div>
