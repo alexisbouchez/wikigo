@@ -24,6 +24,12 @@
             {{if .Pkg.Version}}
             <span class="Package-version" title="Version">{{.Pkg.Version}}</span>
             {{end}}
+            {{if .Pkg.IsTagged}}
+            <span class="Package-tagged" title="Tagged version">Tagged</span>
+            {{end}}
+            {{if .Pkg.IsStable}}
+            <span class="Package-stable" title="Stable version">Stable</span>
+            {{end}}
             {{if .Pkg.PublishedAt}}
             <span class="Package-published" title="Published">Published: {{.Pkg.PublishedAt}}</span>
             {{end}}

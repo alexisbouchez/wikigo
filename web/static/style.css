@@ -366,6 +366,28 @@ code {
     border-radius: 0.25rem;
 }
 
+.Package-tagged {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #0969da;
+    background: rgba(9, 105, 218, 0.1);
+    border-radius: 0.25rem;
+}
+
+.Package-stable {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1a7f37;
+    background: rgba(26, 127, 55, 0.1);
+    border-radius: 0.25rem;
+}
+
 .Package-license {
     display: inline-flex;
     align-items: center;

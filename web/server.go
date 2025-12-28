@@ -26,6 +26,8 @@ type PackageDoc struct {
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
 	Version          string     `json:"version,omitempty"`
+	IsTagged         bool       `json:"is_tagged,omitempty"`
+	IsStable         bool       `json:"is_stable,omitempty"`
 	PublishedAt      string     `json:"published_at,omitempty"`
 	License          string     `json:"license,omitempty"`
 	LicenseText      string     `json:"license_text,omitempty"`

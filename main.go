@@ -25,6 +25,8 @@ type PackageDoc struct {
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
 	Version          string     `json:"version,omitempty"`
+	IsTagged         bool       `json:"is_tagged,omitempty"`
+	IsStable         bool       `json:"is_stable,omitempty"`
 	PublishedAt      string     `json:"published_at,omitempty"`
 	License          string     `json:"license,omitempty"`
 	LicenseText      string     `json:"license_text,omitempty"`
@@ -220,6 +222,9 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	// Detect version
 	version := detectVersion(pkgDir, modulePath)
 
+	// Determine if version is tagged and stable
+	isTagged, isStable := analyzeVersion(version)
+
 	// Detect published date (most recent file modification)
 	publishedAt := detectPublishedDate(filenames)
 
@@ -230,6 +235,8 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		Doc:             docPkg.Doc,
 		Synopsis:        doc.Synopsis(docPkg.Doc),
 		Version:         version,
+		IsTagged:        isTagged,
+		IsStable:        isStable,
 		PublishedAt:     publishedAt,
 		License:         license,
 		LicenseText:     licenseText,
@@ -840,4 +847,32 @@ func detectPublishedDate(filenames []string) string {
 	}
 
 	return latestTime.Format("Jan 2, 2006")
+}
+
+// analyzeVersion determines if a version string represents a tagged and stable release
+func analyzeVersion(version string) (isTagged bool, isStable bool) {
+	if version == "" {
+		return false, false
+	}
+
+	// Semver pattern: v1.2.3 or v1.2.3-pre.1+build
+	semverRegex := regexp.MustCompile(`^v?(\d+)\.(\d+)\.(\d+)(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$`)
+	matches := semverRegex.FindStringSubmatch(version)
+
+	if matches == nil {
+		// Not a proper semver tag
+		return false, false
+	}
+
+	isTagged = true
+
+	// Check if stable: major >= 1 and no pre-release suffix
+	major := matches[1]
+	prerelease := matches[4]
+
+	if major != "0" && prerelease == "" {
+		isStable = true
+	}
+
+	return isTagged, isStable
 }
