@@ -387,6 +387,15 @@ code {
     border-radius: 0.25rem;
 }
 
+.Package-bestPractices {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.Package-bestPractices:hover {
+    color: var(--color-link);
+}
+
 .Package-imports {
     display: inline-flex;
     align-items: center;

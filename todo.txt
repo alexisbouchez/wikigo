@@ -37,7 +37,7 @@
 - [x] Redistributable license badge
 - [ ] Tagged version indicator
 - [ ] Stable version indicator
-- [ ] "Learn more about best practices" link
+- [x] "Learn more about best practices" link
 
 ### Repository & External Links
 - [x] Repository link (github.com, cs.opensource.google, etc.)

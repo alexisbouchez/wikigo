@@ -33,6 +33,7 @@
             {{if .Pkg.HasValidMod}}
             <span class="Package-validMod" title="Valid go.mod file">Valid go.mod</span>
             {{end}}
+            <a href="https://pkg.go.dev/about#best-practices" target="_blank" class="Package-bestPractices" title="Learn more">Learn more</a>
             {{if .Pkg.Imports}}
             <button class="Package-imports" onclick="showImports()" title="View imports">
                 Imports: {{len .Pkg.Imports}}
