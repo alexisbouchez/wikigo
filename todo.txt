@@ -62,7 +62,7 @@
 ### Search Enhancements
 - [x] Search within package (symbols, docs)
 - [ ] Search suggestions/autocomplete
-- [ ] Filter by type (functions, types, methods)
+- [x] Filter by type (functions, types, methods)
 - [x] Search result highlighting
 
 ### Additional Pages

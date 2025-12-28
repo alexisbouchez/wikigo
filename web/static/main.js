@@ -316,42 +316,77 @@ function isInputFocused() {
     return tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
 }
 
-// In-page symbol search
+// In-page symbol search with type filters
 function initSymbolSearch() {
     const searchContainer = document.querySelector('.Package-nav');
     if (!searchContainer) return;
 
+    const navInner = searchContainer.querySelector('.Package-navInner');
+    if (!navInner) return;
+
+    // Create search wrapper
+    const searchWrapper = document.createElement('div');
+    searchWrapper.className = 'SymbolSearch';
+
+    // Create search input
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.placeholder = 'Filter symbols...';
     searchInput.className = 'SymbolSearch-input';
 
-    const navInner = searchContainer.querySelector('.Package-navInner');
-    if (navInner) {
-        navInner.insertBefore(searchInput, navInner.firstChild);
-    }
+    // Create filter buttons
+    const filterWrapper = document.createElement('div');
+    filterWrapper.className = 'SymbolSearch-filters';
+
+    const filters = [
+        { label: 'All', value: 'all' },
+        { label: 'Funcs', value: 'func' },
+        { label: 'Types', value: 'type' }
+    ];
+
+    let activeFilter = 'all';
+
+    filters.forEach(({ label, value }) => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.className = 'SymbolSearch-filter' + (value === 'all' ? ' active' : '');
+        btn.dataset.filter = value;
+        btn.addEventListener('click', () => {
+            activeFilter = value;
+            filterWrapper.querySelectorAll('.SymbolSearch-filter').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyFilters();
+        });
+        filterWrapper.appendChild(btn);
+    });
+
+    searchWrapper.appendChild(searchInput);
+    searchWrapper.appendChild(filterWrapper);
+    navInner.insertBefore(searchWrapper, navInner.firstChild);
 
     const allNavItems = searchContainer.querySelectorAll('.Package-navList li, .Package-navSublist li');
     const allDetails = searchContainer.querySelectorAll('.Package-navDetails');
 
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
+    function applyFilters() {
+        const query = searchInput.value.toLowerCase().trim();
 
-        if (!query) {
-            // Show all items
-            allNavItems.forEach(item => item.style.display = '');
-            allDetails.forEach(d => d.style.display = '');
-            return;
-        }
-
-        // Filter items
         allNavItems.forEach(item => {
             const link = item.querySelector('a');
-            if (link) {
-                const text = link.textContent.toLowerCase();
-                const matches = text.includes(query);
-                item.style.display = matches ? '' : 'none';
+            if (!link) return;
+
+            const text = link.textContent.toLowerCase();
+            const matchesQuery = !query || text.includes(query);
+
+            let matchesType = true;
+            if (activeFilter !== 'all') {
+                if (activeFilter === 'func') {
+                    matchesType = text.includes('func ');
+                } else if (activeFilter === 'type') {
+                    matchesType = text.includes('type ');
+                }
             }
+
+            item.style.display = (matchesQuery && matchesType) ? '' : 'none';
         });
 
         // Show parent details if any child matches
@@ -362,7 +397,9 @@ function initSymbolSearch() {
                 details.open = true;
             }
         });
-    });
+    }
+
+    searchInput.addEventListener('input', applyFilters);
 
     // ? key to focus symbol search
     document.addEventListener('keydown', (e) => {
@@ -400,10 +437,13 @@ style.textContent = `
         color: #007d9c;
         font-weight: 500;
     }
+    .SymbolSearch {
+        margin-bottom: 1rem;
+    }
     .SymbolSearch-input {
         width: 100%;
         padding: 0.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         font-size: 0.875rem;
         border: 1px solid var(--color-border);
         border-radius: 0.25rem;
@@ -416,6 +456,28 @@ style.textContent = `
     }
     .SymbolSearch-input::placeholder {
         color: var(--color-text-secondary);
+    }
+    .SymbolSearch-filters {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .SymbolSearch-filter {
+        flex: 1;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.25rem;
+        background: var(--color-background);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+    }
+    .SymbolSearch-filter:hover {
+        background: var(--color-background-secondary);
+    }
+    .SymbolSearch-filter.active {
+        background: var(--color-brand);
+        color: #fff;
+        border-color: var(--color-brand);
     }
 `;
 document.head.appendChild(style);
