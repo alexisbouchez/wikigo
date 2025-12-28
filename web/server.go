@@ -540,16 +540,39 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queryLower := strings.ToLower(query)
 	var results []*PackageDoc
-	for _, pkg := range s.packages {
-		if strings.Contains(strings.ToLower(pkg.ImportPath), queryLower) ||
-			strings.Contains(strings.ToLower(pkg.Name), queryLower) ||
-			strings.Contains(strings.ToLower(pkg.Synopsis), queryLower) {
-			results = append(results, pkg)
+
+	// Use database search if available (much faster)
+	if s.db != nil {
+		dbPkgs, err := s.db.SearchPackages(query, 100)
+		if err != nil {
+			log.Printf("Database search error: %v", err)
+			// Fall back to in-memory search
+		} else {
+			// Convert db.Package to PackageDoc
+			for _, dbPkg := range dbPkgs {
+				pkg, ok := s.packages[dbPkg.ImportPath]
+				if ok {
+					results = append(results, pkg)
+				}
+			}
+			goto render
 		}
 	}
 
+	// Fallback: in-memory linear search
+	{
+		queryLower := strings.ToLower(query)
+		for _, pkg := range s.packages {
+			if strings.Contains(strings.ToLower(pkg.ImportPath), queryLower) ||
+				strings.Contains(strings.ToLower(pkg.Name), queryLower) ||
+				strings.Contains(strings.ToLower(pkg.Synopsis), queryLower) {
+				results = append(results, pkg)
+			}
+		}
+	}
+
+render:
 	data := struct {
 		Title       string
 		SearchQuery string
@@ -594,8 +617,29 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode([]map[string]string{})
 			return
 		}
-		queryLower := strings.ToLower(query)
+
 		var results []map[string]string
+
+		// Use database search if available
+		if s.db != nil {
+			dbPkgs, err := s.db.SearchPackages(query, 100)
+			if err != nil {
+				log.Printf("Database search error in API: %v", err)
+			} else {
+				for _, dbPkg := range dbPkgs {
+					results = append(results, map[string]string{
+						"import_path": dbPkg.ImportPath,
+						"name":        dbPkg.Name,
+						"synopsis":    dbPkg.Synopsis,
+					})
+				}
+				json.NewEncoder(w).Encode(results)
+				return
+			}
+		}
+
+		// Fallback: in-memory search
+		queryLower := strings.ToLower(query)
 		for _, pkg := range s.packages {
 			if strings.Contains(strings.ToLower(pkg.ImportPath), queryLower) ||
 				strings.Contains(strings.ToLower(pkg.Name), queryLower) ||
@@ -612,16 +656,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Try to find package
-	pkg, ok := s.packages[path]
-	if !ok {
-		for importPath, p := range s.packages {
-			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
-				pkg = p
-				ok = true
-				break
-			}
-		}
-	}
+	pkg, ok := s.FindPackage(path)
 
 	if !ok {
 		w.Header().Set("Content-Type", "application/json")
@@ -851,59 +886,41 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 	var results []SymbolResult
 
 	if query != "" {
-		queryLower := strings.ToLower(query)
-
-		for _, pkg := range s.packages {
-			// Search functions
-			if kind == "" || kind == "func" {
-				for _, fn := range pkg.Functions {
-					if strings.Contains(strings.ToLower(fn.Name), queryLower) {
-						results = append(results, SymbolResult{
-							Name:       fn.Name,
-							Kind:       "func",
-							Package:    pkg.Name,
-							ImportPath: pkg.ImportPath,
-							Synopsis:   shortDoc(fn.Doc),
-							Deprecated: fn.Deprecated,
-						})
+		// Use database search if available (much faster)
+		if s.db != nil {
+			dbSymbols, err := s.db.SearchSymbols(query, kind, 100)
+			if err != nil {
+				log.Printf("Database symbol search error: %v", err)
+				// Fall back to in-memory search
+			} else {
+				// Convert db.Symbol to SymbolResult
+				for _, sym := range dbSymbols {
+					pkg, ok := s.packages[sym.ImportPath]
+					packageName := sym.ImportPath
+					if ok {
+						packageName = pkg.Name
 					}
+					results = append(results, SymbolResult{
+						Name:       sym.Name,
+						Kind:       sym.Kind,
+						Package:    packageName,
+						ImportPath: sym.ImportPath,
+						Synopsis:   sym.Synopsis,
+						Deprecated: sym.Deprecated,
+					})
 				}
+				goto render
 			}
+		}
 
-			// Search types
-			for _, t := range pkg.Types {
-				if kind == "" || kind == "type" {
-					if strings.Contains(strings.ToLower(t.Name), queryLower) {
-						results = append(results, SymbolResult{
-							Name:       t.Name,
-							Kind:       "type",
-							Package:    pkg.Name,
-							ImportPath: pkg.ImportPath,
-							Synopsis:   shortDoc(t.Doc),
-							Deprecated: t.Deprecated,
-						})
-					}
-				}
+		// Fallback: in-memory linear search
+		{
+			queryLower := strings.ToLower(query)
 
-				// Search methods
-				if kind == "" || kind == "method" {
-					for _, m := range t.Methods {
-						if strings.Contains(strings.ToLower(m.Name), queryLower) {
-							results = append(results, SymbolResult{
-								Name:       t.Name + "." + m.Name,
-								Kind:       "method",
-								Package:    pkg.Name,
-								ImportPath: pkg.ImportPath,
-								Synopsis:   shortDoc(m.Doc),
-								Deprecated: m.Deprecated,
-							})
-						}
-					}
-				}
-
-				// Search type funcs (constructors)
+			for _, pkg := range s.packages {
+				// Search functions
 				if kind == "" || kind == "func" {
-					for _, fn := range t.Functions {
+					for _, fn := range pkg.Functions {
 						if strings.Contains(strings.ToLower(fn.Name), queryLower) {
 							results = append(results, SymbolResult{
 								Name:       fn.Name,
@@ -916,48 +933,98 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				}
-			}
 
-			// Search constants
-			if kind == "" || kind == "const" {
-				for _, c := range pkg.Constants {
-					for _, name := range c.Names {
-						if strings.Contains(strings.ToLower(name), queryLower) {
+				// Search types
+				for _, t := range pkg.Types {
+					if kind == "" || kind == "type" {
+						if strings.Contains(strings.ToLower(t.Name), queryLower) {
 							results = append(results, SymbolResult{
-								Name:       name,
-								Kind:       "const",
+								Name:       t.Name,
+								Kind:       "type",
 								Package:    pkg.Name,
 								ImportPath: pkg.ImportPath,
-								Synopsis:   shortDoc(c.Doc),
+								Synopsis:   shortDoc(t.Doc),
+								Deprecated: t.Deprecated,
 							})
+						}
+					}
+
+					// Search methods
+					if kind == "" || kind == "method" {
+						for _, m := range t.Methods {
+							if strings.Contains(strings.ToLower(m.Name), queryLower) {
+								results = append(results, SymbolResult{
+									Name:       t.Name + "." + m.Name,
+									Kind:       "method",
+									Package:    pkg.Name,
+									ImportPath: pkg.ImportPath,
+									Synopsis:   shortDoc(m.Doc),
+									Deprecated: m.Deprecated,
+								})
+							}
+						}
+					}
+
+					// Search type funcs (constructors)
+					if kind == "" || kind == "func" {
+						for _, fn := range t.Functions {
+							if strings.Contains(strings.ToLower(fn.Name), queryLower) {
+								results = append(results, SymbolResult{
+									Name:       fn.Name,
+									Kind:       "func",
+									Package:    pkg.Name,
+									ImportPath: pkg.ImportPath,
+									Synopsis:   shortDoc(fn.Doc),
+									Deprecated: fn.Deprecated,
+								})
+							}
+						}
+					}
+				}
+
+				// Search constants
+				if kind == "" || kind == "const" {
+					for _, c := range pkg.Constants {
+						for _, name := range c.Names {
+							if strings.Contains(strings.ToLower(name), queryLower) {
+								results = append(results, SymbolResult{
+									Name:       name,
+									Kind:       "const",
+									Package:    pkg.Name,
+									ImportPath: pkg.ImportPath,
+									Synopsis:   shortDoc(c.Doc),
+								})
+							}
+						}
+					}
+				}
+
+				// Search variables
+				if kind == "" || kind == "var" {
+					for _, v := range pkg.Variables {
+						for _, name := range v.Names {
+							if strings.Contains(strings.ToLower(name), queryLower) {
+								results = append(results, SymbolResult{
+									Name:       name,
+									Kind:       "var",
+									Package:    pkg.Name,
+									ImportPath: pkg.ImportPath,
+									Synopsis:   shortDoc(v.Doc),
+								})
+							}
 						}
 					}
 				}
 			}
 
-			// Search variables
-			if kind == "" || kind == "var" {
-				for _, v := range pkg.Variables {
-					for _, name := range v.Names {
-						if strings.Contains(strings.ToLower(name), queryLower) {
-							results = append(results, SymbolResult{
-								Name:       name,
-								Kind:       "var",
-								Package:    pkg.Name,
-								ImportPath: pkg.ImportPath,
-								Synopsis:   shortDoc(v.Doc),
-							})
-						}
-					}
-				}
+			// Limit results
+			if len(results) > 100 {
+				results = results[:100]
 			}
 		}
 	}
 
-	// Limit results
-	if len(results) > 100 {
-		results = results[:100]
-	}
+render:
 
 	data := struct {
 		Title       string
