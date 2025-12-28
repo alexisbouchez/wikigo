@@ -257,6 +257,7 @@
                         <a href="#{{.Name}}" class="Documentation-idLink">func {{.Name}}</a>
                         {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
                         <a class="Documentation-source" href="{{sourceLink $.Pkg.ImportPath .Filename .Line}}" target="_blank">View Source</a>
+                        <button class="Documentation-explain" onclick="explainCode(this)" data-code="{{.Signature}}">Explain</button>
                     </h3>
                     <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
                     {{if .Doc}}
@@ -413,6 +414,7 @@
                         <h4 class="Documentation-functionHeader">
                             <a href="#{{$typeName}}.{{.Name}}" class="Documentation-idLink">func ({{.Recv}}) {{.Name}}</a>
                             {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
+                            <button class="Documentation-explain" onclick="explainCode(this)" data-code="{{.Signature}}">Explain</button>
                         </h4>
                         <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
                         {{if .Doc}}

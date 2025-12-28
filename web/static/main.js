@@ -765,3 +765,100 @@ document.head.appendChild(style);
 
 // Initialize symbol search on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', initSymbolSearch);
+
+// Explain code with AI
+async function explainCode(btn) {
+    const code = btn.getAttribute('data-code');
+    if (!code) return;
+
+    // Disable button during request
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Loading...';
+
+    try {
+        const response = await fetch('/api/explain', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to get explanation');
+        }
+
+        const data = await response.json();
+
+        // Show explanation in modal
+        showExplanationModal(code, data.explanation);
+    } catch (error) {
+        console.error('Error explaining code:', error);
+        alert('Failed to generate explanation. AI service may not be available.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+// Show explanation modal
+function showExplanationModal(code, explanation) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('explanationModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'explanationModal';
+        modal.className = 'ExplanationModal';
+        modal.innerHTML = `
+            <div class="ExplanationModal-content">
+                <div class="ExplanationModal-header">
+                    <h3>Code Explanation</h3>
+                    <button class="ExplanationModal-close" onclick="closeExplanationModal()">&times;</button>
+                </div>
+                <div class="ExplanationModal-body">
+                    <div class="ExplanationModal-code">
+                        <pre><code class="language-go"></code></pre>
+                    </div>
+                    <div class="ExplanationModal-explanation"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Update content
+    modal.querySelector('.ExplanationModal-code code').textContent = code;
+    modal.querySelector('.ExplanationModal-explanation').textContent = explanation;
+
+    // Show modal
+    modal.style.display = 'flex';
+
+    // Highlight code
+    if (window.Prism) {
+        Prism.highlightElement(modal.querySelector('.ExplanationModal-code code'));
+    }
+}
+
+// Close explanation modal
+function closeExplanationModal() {
+    const modal = document.getElementById('explanationModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Close modal on outside click
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('explanationModal');
+    if (modal && e.target === modal) {
+        closeExplanationModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeExplanationModal();
+    }
+});

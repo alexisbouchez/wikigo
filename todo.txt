@@ -173,10 +173,11 @@
   - Auto-populate Go Playground
 
 #### User-Facing Features
-- [ ] AI-powered "Explain this code" button
-  - Explain complex function implementations
-  - Break down type definitions
-  - Clarify method behavior
+- [x] AI-powered "Explain this code" button
+  - API endpoint for code explanation (web/server.go)
+  - Explain button on functions and methods
+  - Modal display with syntax highlighting
+  - Integrated with Mistral AI service
 - [ ] License summarization
   - Generate plain-English summaries of licenses
   - Highlight key terms (attribution, redistribution, etc.)

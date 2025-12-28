@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/alexisbouchez/wikigo/ai"
 	"github.com/alexisbouchez/wikigo/db"
 )
 
@@ -110,10 +111,11 @@ type Example struct {
 
 // Server represents the documentation web server
 type Server struct {
-	packages  map[string]*PackageDoc
-	templates *template.Template
-	dataDir   string
-	db        *db.DB // optional database for indexing
+	packages   map[string]*PackageDoc
+	templates  *template.Template
+	dataDir    string
+	db         *db.DB        // optional database for indexing
+	aiService  *ai.Service   // optional AI service for code explanations
 }
 
 // NewServer creates a new documentation server
@@ -136,6 +138,13 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 		}
 		s.db = database
 		log.Printf("Opened database: %s", dbPath)
+	}
+
+	// Initialize AI service (from environment)
+	s.aiService = ai.NewServiceFromEnv()
+	if s.aiService != nil {
+		s.aiService.SetBudget(5.0, 100.0) // $5/day, $100/month
+		log.Printf("AI service initialized")
 	}
 
 	// Parse templates
@@ -444,6 +453,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/symbols", s.handleSymbolSearch)
 	mux.HandleFunc("/diff/", s.handleDiff)
 	mux.HandleFunc("/compare/", s.handleCompare)
+	mux.HandleFunc("/api/explain", s.handleExplain)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -2021,4 +2031,46 @@ func (s *Server) comparePackages(pkg1, pkg2 *PackageDoc) []DiffEntry {
 	}
 
 	return diff
+}
+
+// handleExplain handles AI code explanation requests
+func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagExplainCode) {
+		http.Error(w, "Code explanation service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Code == "" {
+		http.Error(w, "Code is required", http.StatusBadRequest)
+		return
+	}
+
+	// Generate explanation
+	explanation, err := s.aiService.ExplainCode(req.Code)
+	if err != nil {
+		log.Printf("Error explaining code: %v", err)
+		http.Error(w, "Failed to generate explanation", http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"explanation": explanation,
+	})
 }
