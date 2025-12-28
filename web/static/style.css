@@ -763,6 +763,37 @@ code {
     }
 }
 
+@media print {
+    .Header,
+    .Footer,
+    .Package-nav,
+    .ThemeToggle,
+    .SearchForm,
+    .copy-button,
+    .Package-copyBtn {
+        display: none !important;
+    }
+
+    .Package-body {
+        display: block;
+    }
+
+    .Package-content {
+        width: 100%;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: underline;
+    }
+
+    pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        border: 1px solid #ccc;
+    }
+}
+
 @media (max-width: 48rem) {
     .Header-menuBtn {
         display: block;
