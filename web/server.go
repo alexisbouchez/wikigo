@@ -25,6 +25,7 @@ type PackageDoc struct {
 	Name       string     `json:"name"`
 	Doc        string     `json:"doc"`
 	Synopsis   string     `json:"synopsis"`
+	License    string     `json:"license,omitempty"`
 	Constants  []Constant `json:"constants"`
 	Variables  []Variable `json:"variables"`
 	Functions  []Function `json:"functions"`

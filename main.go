@@ -21,6 +21,7 @@ type PackageDoc struct {
 	Name       string     `json:"name"`
 	Doc        string     `json:"doc"`
 	Synopsis   string     `json:"synopsis"`
+	License    string     `json:"license,omitempty"`
 	Constants  []Constant `json:"constants"`
 	Variables  []Variable `json:"variables"`
 	Functions  []Function `json:"functions"`
@@ -191,12 +192,16 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		examples = append(examples, doc.Examples(f)...)
 	}
 
+	// Detect license
+	license := detectLicense(pkgDir)
+
 	// Build result
 	result := &PackageDoc{
 		ImportPath: pkgPath,
 		Name:       docPkg.Name,
 		Doc:        docPkg.Doc,
 		Synopsis:   doc.Synopsis(docPkg.Doc),
+		License:    license,
 		Filenames:  filenames,
 	}
 
@@ -482,4 +487,75 @@ func findExamples(examples []*doc.Example, name string, fset *token.FileSet) []E
 		}
 	}
 	return result
+}
+
+// detectLicense looks for a license file and identifies the license type
+func detectLicense(dir string) string {
+	// Walk up directories to find LICENSE file (for module root)
+	currentDir := dir
+	for i := 0; i < 10; i++ { // Limit depth
+		license := findLicenseInDir(currentDir)
+		if license != "" {
+			return license
+		}
+		parent := filepath.Dir(currentDir)
+		if parent == currentDir {
+			break
+		}
+		currentDir = parent
+	}
+	return ""
+}
+
+func findLicenseInDir(dir string) string {
+	licenseFiles := []string{
+		"LICENSE", "LICENSE.txt", "LICENSE.md",
+		"LICENCE", "LICENCE.txt", "LICENCE.md",
+		"COPYING", "COPYING.txt",
+	}
+
+	for _, name := range licenseFiles {
+		path := filepath.Join(dir, name)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		return identifyLicense(string(content))
+	}
+	return ""
+}
+
+func identifyLicense(content string) string {
+	content = strings.ToLower(content)
+
+	// Check for common license patterns
+	switch {
+	case strings.Contains(content, "apache license") && strings.Contains(content, "version 2.0"):
+		return "Apache-2.0"
+	case strings.Contains(content, "mit license") || strings.Contains(content, "permission is hereby granted, free of charge"):
+		return "MIT"
+	case strings.Contains(content, "bsd 3-clause") || (strings.Contains(content, "redistribution and use") && strings.Contains(content, "neither the name")):
+		return "BSD-3-Clause"
+	case strings.Contains(content, "bsd 2-clause") || (strings.Contains(content, "redistribution and use") && !strings.Contains(content, "neither the name") && !strings.Contains(content, "advertising")):
+		return "BSD-2-Clause"
+	case strings.Contains(content, "gnu general public license") && strings.Contains(content, "version 3"):
+		return "GPL-3.0"
+	case strings.Contains(content, "gnu general public license") && strings.Contains(content, "version 2"):
+		return "GPL-2.0"
+	case strings.Contains(content, "gnu lesser general public license"):
+		return "LGPL"
+	case strings.Contains(content, "mozilla public license") && strings.Contains(content, "2.0"):
+		return "MPL-2.0"
+	case strings.Contains(content, "unlicense") || strings.Contains(content, "this is free and unencumbered"):
+		return "Unlicense"
+	case strings.Contains(content, "isc license"):
+		return "ISC"
+	case strings.Contains(content, "creative commons"):
+		if strings.Contains(content, "cc0") {
+			return "CC0-1.0"
+		}
+		return "CC"
+	}
+
+	return "Unknown"
 }

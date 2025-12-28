@@ -20,6 +20,11 @@
             <code class="Package-importPath">{{.Pkg.ImportPath}}</code>
             <button class="Package-copyBtn" onclick="copyImportPath(this)" data-path="{{.Pkg.ImportPath}}">Copy</button>
         </div>
+        {{if .Pkg.License}}
+        <div class="Package-meta">
+            <span class="Package-license" title="License">{{.Pkg.License}}</span>
+        </div>
+        {{end}}
     </div>
 
     <div class="Package-body">
