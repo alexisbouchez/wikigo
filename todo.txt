@@ -60,7 +60,7 @@
 ## Low Priority
 
 ### Search Enhancements
-- [ ] Search within package (symbols, docs)
+- [x] Search within package (symbols, docs)
 - [ ] Search suggestions/autocomplete
 - [ ] Filter by type (functions, types, methods)
 - [ ] Search result highlighting

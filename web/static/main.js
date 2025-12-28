@@ -316,6 +316,63 @@ function isInputFocused() {
     return tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
 }
 
+// In-page symbol search
+function initSymbolSearch() {
+    const searchContainer = document.querySelector('.Package-nav');
+    if (!searchContainer) return;
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Filter symbols...';
+    searchInput.className = 'SymbolSearch-input';
+
+    const navInner = searchContainer.querySelector('.Package-navInner');
+    if (navInner) {
+        navInner.insertBefore(searchInput, navInner.firstChild);
+    }
+
+    const allNavItems = searchContainer.querySelectorAll('.Package-navList li, .Package-navSublist li');
+    const allDetails = searchContainer.querySelectorAll('.Package-navDetails');
+
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+
+        if (!query) {
+            // Show all items
+            allNavItems.forEach(item => item.style.display = '');
+            allDetails.forEach(d => d.style.display = '');
+            return;
+        }
+
+        // Filter items
+        allNavItems.forEach(item => {
+            const link = item.querySelector('a');
+            if (link) {
+                const text = link.textContent.toLowerCase();
+                const matches = text.includes(query);
+                item.style.display = matches ? '' : 'none';
+            }
+        });
+
+        // Show parent details if any child matches
+        allDetails.forEach(details => {
+            const visibleItems = details.querySelectorAll('li:not([style*="display: none"])');
+            details.style.display = visibleItems.length > 0 ? '' : 'none';
+            if (visibleItems.length > 0) {
+                details.open = true;
+            }
+        });
+    });
+
+    // ? key to focus symbol search
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '?' && !isInputFocused()) {
+            e.preventDefault();
+            searchInput.focus();
+        }
+    });
+}
+
 // Add copy button styles
 const style = document.createElement('style');
 style.textContent = `
@@ -343,5 +400,25 @@ style.textContent = `
         color: #007d9c;
         font-weight: 500;
     }
+    .SymbolSearch-input {
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.25rem;
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+    .SymbolSearch-input:focus {
+        outline: none;
+        border-color: var(--color-brand);
+    }
+    .SymbolSearch-input::placeholder {
+        color: var(--color-text-secondary);
+    }
 `;
 document.head.appendChild(style);
+
+// Initialize symbol search on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', initSymbolSearch);
