@@ -351,6 +351,38 @@ func (s *Server) GetDBStats() (packageCount, symbolCount, importCount int) {
 	return
 }
 
+// FindPackage finds a package by import path, trying both exact match and suffix match
+func (s *Server) FindPackage(path string) (*PackageDoc, bool) {
+	pkg, ok := s.packages[path]
+	if !ok {
+		// Try with common prefixes
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+	return pkg, ok
+}
+
+// FindPackageWithPath finds a package and returns the matched import path
+func (s *Server) FindPackageWithPath(path string) (*PackageDoc, string, bool) {
+	pkg, ok := s.packages[path]
+	if ok {
+		return pkg, path, true
+	}
+
+	// Try with common prefixes
+	for importPath, p := range s.packages {
+		if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+			return p, importPath, true
+		}
+	}
+	return nil, "", false
+}
+
 // loadPackages loads all package documentation from JSON files
 func (s *Server) loadPackages() error {
 	return filepath.Walk(s.dataDir, func(path string, info os.FileInfo, err error) error {
@@ -426,17 +458,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Try to find package
-	pkg, ok := s.packages[path]
-	if !ok {
-		// Try with common prefixes
-		for importPath, p := range s.packages {
-			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
-				pkg = p
-				ok = true
-				break
-			}
-		}
-	}
+	pkg, ok := s.FindPackage(path)
 
 	if !ok {
 		http.NotFound(w, r)
@@ -1099,17 +1121,9 @@ func (s *Server) handleImportedBy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find package
-	pkg, ok := s.packages[path]
-	if !ok {
-		for importPath, p := range s.packages {
-			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
-				pkg = p
-				path = importPath
-				ok = true
-				break
-			}
-		}
-	}
+	var ok bool
+	var pkg *PackageDoc
+	pkg, path, ok = s.FindPackageWithPath(path)
 
 	if !ok {
 		http.NotFound(w, r)
