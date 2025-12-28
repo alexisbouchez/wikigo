@@ -22,6 +22,7 @@ type PackageDoc struct {
 	Doc        string     `json:"doc"`
 	Synopsis   string     `json:"synopsis"`
 	License    string     `json:"license,omitempty"`
+	Repository string     `json:"repository,omitempty"`
 	Constants  []Constant `json:"constants"`
 	Variables  []Variable `json:"variables"`
 	Functions  []Function `json:"functions"`
@@ -195,6 +196,9 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	// Detect license
 	license := detectLicense(pkgDir)
 
+	// Detect repository
+	repository := detectRepository(pkgPath, pkgDir)
+
 	// Build result
 	result := &PackageDoc{
 		ImportPath: pkgPath,
@@ -202,6 +206,7 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		Doc:        docPkg.Doc,
 		Synopsis:   doc.Synopsis(docPkg.Doc),
 		License:    license,
+		Repository: repository,
 		Filenames:  filenames,
 	}
 
@@ -558,4 +563,70 @@ func identifyLicense(content string) string {
 	}
 
 	return "Unknown"
+}
+
+// detectRepository detects the repository URL from the import path or go.mod
+func detectRepository(importPath, pkgDir string) string {
+	// Try to find go.mod and extract module path
+	modulePath := findModulePath(pkgDir)
+	if modulePath == "" {
+		modulePath = importPath
+	}
+
+	// Convert module path to repository URL
+	return moduleToRepoURL(modulePath)
+}
+
+func findModulePath(dir string) string {
+	currentDir := dir
+	for i := 0; i < 10; i++ {
+		gomodPath := filepath.Join(currentDir, "go.mod")
+		content, err := os.ReadFile(gomodPath)
+		if err == nil {
+			// Parse module line
+			for _, line := range strings.Split(string(content), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "module ") {
+					return strings.TrimSpace(strings.TrimPrefix(line, "module"))
+				}
+			}
+		}
+		parent := filepath.Dir(currentDir)
+		if parent == currentDir {
+			break
+		}
+		currentDir = parent
+	}
+	return ""
+}
+
+func moduleToRepoURL(modulePath string) string {
+	// Handle common hosting services
+	parts := strings.Split(modulePath, "/")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	host := parts[0]
+	switch {
+	case host == "github.com" && len(parts) >= 3:
+		return "https://github.com/" + parts[1] + "/" + parts[2]
+	case host == "gitlab.com" && len(parts) >= 3:
+		return "https://gitlab.com/" + parts[1] + "/" + parts[2]
+	case host == "bitbucket.org" && len(parts) >= 3:
+		return "https://bitbucket.org/" + parts[1] + "/" + parts[2]
+	case strings.HasPrefix(host, "go.googlesource.com"):
+		return "https://go.googlesource.com/" + parts[1]
+	case host == "golang.org" && len(parts) >= 2 && parts[1] == "x":
+		if len(parts) >= 3 {
+			return "https://go.googlesource.com/" + parts[2]
+		}
+	case strings.Contains(host, "."):
+		// Generic: assume https://host/path
+		if len(parts) >= 3 {
+			return "https://" + parts[0] + "/" + parts[1] + "/" + parts[2]
+		}
+	}
+
+	return ""
 }

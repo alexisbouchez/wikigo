@@ -40,7 +40,7 @@
 - [ ] "Learn more about best practices" link
 
 ### Repository & External Links
-- [ ] Repository link (github.com, cs.opensource.google, etc.)
+- [x] Repository link (github.com, cs.opensource.google, etc.)
 - [ ] Open Source Insights link
 - [ ] deps.dev link
 - [ ] "Report a Vulnerability" link

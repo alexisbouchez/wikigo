@@ -29,6 +29,9 @@
                 Imports: {{len .Pkg.Imports}}
             </button>
             {{end}}
+            {{if .Pkg.Repository}}
+            <a href="{{.Pkg.Repository}}" target="_blank" class="Package-repo" title="Repository">Repository</a>
+            {{end}}
         </div>
         {{if .Pkg.Imports}}
         <div class="ImportsPopup" id="importsPopup">
