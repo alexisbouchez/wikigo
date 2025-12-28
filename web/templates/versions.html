@@ -14,7 +14,44 @@
             <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
         </p>
 
-        {{if .Pkg.Versions}}
+        {{if .Versions}}
+        <div class="Versions-list">
+            <table class="VersionTable">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Published</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $i, $v := .Versions}}
+                    <tr{{if $v.IsCurrent}} class="is-current"{{end}}{{if $v.Retracted}} class="is-retracted"{{end}}>
+                        <td class="VersionTable-version">
+                            {{$v.Version}}
+                            {{if $v.IsCurrent}}<span class="VersionBadge VersionBadge--latest">Current</span>{{end}}
+                            {{if $v.Retracted}}<span class="VersionBadge VersionBadge--retracted">Retracted</span>{{end}}
+                        </td>
+                        <td class="VersionTable-date">
+                            {{if $v.Timestamp}}{{$v.Timestamp}}{{else}}-{{end}}
+                        </td>
+                        <td class="VersionTable-status">
+                            {{if $v.Retracted}}
+                                <span class="VersionBadge VersionBadge--retracted">Retracted</span>
+                            {{else if $v.IsStable}}
+                                <span class="VersionBadge VersionBadge--stable">Stable</span>
+                            {{else if $v.IsTagged}}
+                                <span class="VersionBadge VersionBadge--prerelease">Pre-release</span>
+                            {{else}}
+                                <span class="VersionBadge VersionBadge--pseudo">Pseudo-version</span>
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else if .Pkg.Versions}}
         <div class="Versions-list">
             <table class="VersionTable">
                 <thead>

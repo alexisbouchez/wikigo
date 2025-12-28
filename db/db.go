@@ -60,6 +60,18 @@ type Symbol struct {
 	Deprecated bool   `json:"deprecated"`
 }
 
+// ModuleVersion represents a version of a module
+type ModuleVersion struct {
+	ID         int64     `json:"id"`
+	ModulePath string    `json:"module_path"`
+	Version    string    `json:"version"`
+	Timestamp  time.Time `json:"timestamp"`  // When this version was published
+	IsTagged   bool      `json:"is_tagged"`  // Semver tagged version
+	IsStable   bool      `json:"is_stable"`  // v1+ and no pre-release
+	Retracted  bool      `json:"retracted"`  // Version was retracted
+	CreatedAt  time.Time `json:"created_at"` // When we indexed it
+}
+
 // Open opens or creates a SQLite database
 func Open(path string) (*DB, error) {
 	conn, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_busy_timeout=5000")
@@ -206,6 +218,22 @@ func (db *DB) migrate() error {
 			value TEXT,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+
+		// Module versions table for version history tracking
+		`CREATE TABLE IF NOT EXISTS module_versions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			module_path TEXT NOT NULL,
+			version TEXT NOT NULL,
+			timestamp DATETIME,
+			is_tagged INTEGER DEFAULT 0,
+			is_stable INTEGER DEFAULT 0,
+			retracted INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(module_path, version)
+		)`,
+
+		`CREATE INDEX IF NOT EXISTS idx_module_versions_path ON module_versions(module_path)`,
+		`CREATE INDEX IF NOT EXISTS idx_module_versions_timestamp ON module_versions(timestamp DESC)`,
 	}
 
 	for _, migration := range migrations {
@@ -620,4 +648,115 @@ func (db *DB) SetMetadata(key, value string) error {
 			updated_at = CURRENT_TIMESTAMP
 	`, key, value)
 	return err
+}
+
+// UpsertModuleVersion inserts or updates a module version
+func (db *DB) UpsertModuleVersion(mv *ModuleVersion) error {
+	_, err := db.conn.Exec(`
+		INSERT INTO module_versions (module_path, version, timestamp, is_tagged, is_stable, retracted)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(module_path, version) DO UPDATE SET
+			timestamp = COALESCE(excluded.timestamp, module_versions.timestamp),
+			is_tagged = excluded.is_tagged,
+			is_stable = excluded.is_stable,
+			retracted = excluded.retracted
+	`, mv.ModulePath, mv.Version, mv.Timestamp, mv.IsTagged, mv.IsStable, mv.Retracted)
+	return err
+}
+
+// GetModuleVersions returns all versions for a module, sorted by semver (newest first)
+func (db *DB) GetModuleVersions(modulePath string) ([]*ModuleVersion, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, module_path, version, timestamp, is_tagged, is_stable, retracted, created_at
+		FROM module_versions
+		WHERE module_path = ?
+		ORDER BY
+			CASE WHEN version LIKE 'v%' THEN 0 ELSE 1 END,
+			CAST(SUBSTR(version, 2, INSTR(SUBSTR(version, 2), '.') - 1) AS INTEGER) DESC,
+			timestamp DESC
+	`, modulePath)
+	if err != nil {
+		return nil, fmt.Errorf("querying versions: %w", err)
+	}
+	defer rows.Close()
+
+	var versions []*ModuleVersion
+	for rows.Next() {
+		mv := &ModuleVersion{}
+		var timestamp sql.NullTime
+		err := rows.Scan(&mv.ID, &mv.ModulePath, &mv.Version, &timestamp,
+			&mv.IsTagged, &mv.IsStable, &mv.Retracted, &mv.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("scanning version: %w", err)
+		}
+		if timestamp.Valid {
+			mv.Timestamp = timestamp.Time
+		}
+		versions = append(versions, mv)
+	}
+
+	return versions, rows.Err()
+}
+
+// GetModuleVersion returns a specific version of a module
+func (db *DB) GetModuleVersion(modulePath, version string) (*ModuleVersion, error) {
+	row := db.conn.QueryRow(`
+		SELECT id, module_path, version, timestamp, is_tagged, is_stable, retracted, created_at
+		FROM module_versions
+		WHERE module_path = ? AND version = ?
+	`, modulePath, version)
+
+	mv := &ModuleVersion{}
+	var timestamp sql.NullTime
+	err := row.Scan(&mv.ID, &mv.ModulePath, &mv.Version, &timestamp,
+		&mv.IsTagged, &mv.IsStable, &mv.Retracted, &mv.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning version: %w", err)
+	}
+	if timestamp.Valid {
+		mv.Timestamp = timestamp.Time
+	}
+
+	return mv, nil
+}
+
+// GetLatestModuleVersion returns the latest version for a module
+func (db *DB) GetLatestModuleVersion(modulePath string) (*ModuleVersion, error) {
+	row := db.conn.QueryRow(`
+		SELECT id, module_path, version, timestamp, is_tagged, is_stable, retracted, created_at
+		FROM module_versions
+		WHERE module_path = ? AND retracted = 0
+		ORDER BY
+			CASE WHEN is_stable = 1 THEN 0 ELSE 1 END,
+			timestamp DESC
+		LIMIT 1
+	`, modulePath)
+
+	mv := &ModuleVersion{}
+	var timestamp sql.NullTime
+	err := row.Scan(&mv.ID, &mv.ModulePath, &mv.Version, &timestamp,
+		&mv.IsTagged, &mv.IsStable, &mv.Retracted, &mv.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning version: %w", err)
+	}
+	if timestamp.Valid {
+		mv.Timestamp = timestamp.Time
+	}
+
+	return mv, nil
+}
+
+// CountModuleVersions returns the number of versions for a module
+func (db *DB) CountModuleVersions(modulePath string) (int, error) {
+	var count int
+	err := db.conn.QueryRow(`
+		SELECT COUNT(*) FROM module_versions WHERE module_path = ?
+	`, modulePath).Scan(&count)
+	return count, err
 }

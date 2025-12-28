@@ -1558,6 +1558,34 @@ code {
     color: #c96700;
 }
 
+.VersionBadge--retracted {
+    background: rgba(207, 34, 46, 0.1);
+    color: #cf222e;
+    text-decoration: line-through;
+}
+
+.VersionBadge--pseudo {
+    background: rgba(128, 128, 128, 0.1);
+    color: #666;
+}
+
+.VersionTable-date {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+tr.is-current {
+    background: rgba(0, 119, 255, 0.05);
+}
+
+tr.is-retracted {
+    opacity: 0.6;
+}
+
+tr.is-retracted .VersionTable-version {
+    text-decoration: line-through;
+}
+
 /* Imported By Page */
 .ImportedBy {
     max-width: 60rem;
@@ -1782,4 +1810,340 @@ code {
     .Package-title {
         font-size: 1.5rem;
     }
+}
+
+/* Diff Page */
+.Diff {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.Diff-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.Diff-package {
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+}
+
+.Diff-form {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+}
+
+.Diff-selectors {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.Diff-selector {
+    flex: 1;
+    min-width: 200px;
+}
+
+.Diff-selector label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.Diff-selector select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    background: var(--color-background);
+    color: var(--color-text);
+    font-size: 0.875rem;
+}
+
+.Diff-arrow {
+    color: var(--color-text-secondary);
+    font-size: 1.5rem;
+    padding-bottom: 0.25rem;
+}
+
+.Diff-submit {
+    padding: 0.5rem 1.5rem;
+    background: var(--color-brand);
+    color: #fff;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.Diff-submit:hover {
+    background: var(--color-brand-dark);
+}
+
+.Diff-results {
+    margin-top: 2rem;
+}
+
+.Diff-resultsTitle {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Diff-info {
+    padding: 1.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.5rem;
+    color: var(--color-text-secondary);
+}
+
+.Diff-info ul {
+    margin: 0.5rem 0 0 1.5rem;
+}
+
+.Diff-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* DiffEntry */
+.DiffEntry {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-background);
+}
+
+.DiffEntry-header {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.DiffEntry-kind {
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.DiffEntry--added .DiffEntry-kind,
+.DiffEntry--only-right .DiffEntry-kind {
+    background: rgba(26, 127, 55, 0.1);
+    color: #1a7f37;
+}
+
+.DiffEntry--removed .DiffEntry-kind,
+.DiffEntry--only-left .DiffEntry-kind {
+    background: rgba(207, 34, 46, 0.1);
+    color: #cf222e;
+}
+
+.DiffEntry--changed .DiffEntry-kind {
+    background: rgba(201, 103, 0, 0.1);
+    color: #c96700;
+}
+
+.DiffEntry--unchanged .DiffEntry-kind,
+.DiffEntry--info .DiffEntry-kind {
+    background: rgba(128, 128, 128, 0.1);
+    color: #666;
+}
+
+.DiffEntry-type {
+    padding: 0.125rem 0.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.DiffEntry-name {
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+.DiffEntry-synopsis {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.DiffEntry-old,
+.DiffEntry-new {
+    margin-top: 0.5rem;
+}
+
+.DiffEntry-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.DiffEntry-code {
+    margin: 0;
+    padding: 0.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    overflow-x: auto;
+}
+
+.DiffEntry--only-left .DiffEntry-old {
+    border-left: 3px solid #cf222e;
+    padding-left: 0.75rem;
+}
+
+.DiffEntry--only-right .DiffEntry-new {
+    border-left: 3px solid #1a7f37;
+    padding-left: 0.75rem;
+}
+
+/* Compare Page */
+.Compare {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.Compare-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.Compare-description {
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+}
+
+.Compare-form {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+}
+
+.Compare-selectors {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.Compare-selector {
+    flex: 1;
+    min-width: 200px;
+}
+
+.Compare-selector label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.Compare-selector input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    background: var(--color-background);
+    color: var(--color-text);
+    font-size: 0.875rem;
+    font-family: var(--font-mono);
+}
+
+.Compare-vs {
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    font-weight: 500;
+    padding-bottom: 0.25rem;
+}
+
+.Compare-submit {
+    padding: 0.5rem 1.5rem;
+    background: var(--color-brand);
+    color: #fff;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.Compare-submit:hover {
+    background: var(--color-brand-dark);
+}
+
+.Compare-results {
+    margin-top: 2rem;
+}
+
+.Compare-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.Compare-pkg {
+    flex: 1;
+}
+
+.Compare-pkg h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.Compare-pkg p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.Compare-vs-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    padding-top: 0.25rem;
+}
+
+.Compare-summary {
+    margin-bottom: 1rem;
+}
+
+.Compare-summary h2 {
+    font-size: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Compare-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.Compare-info {
+    padding: 1.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.5rem;
+    color: var(--color-text-secondary);
+}
+
+.Compare-info ul {
+    margin: 0.5rem 0 0 1.5rem;
 }

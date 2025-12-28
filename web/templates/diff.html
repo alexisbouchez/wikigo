@@ -1,0 +1,95 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="Diff">
+        <nav class="Breadcrumb">
+            <a href="/">Packages</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <a href="/{{.Pkg.ImportPath}}">{{.Pkg.Name}}</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <span class="Breadcrumb-current">API Diff</span>
+        </nav>
+
+        <h1 class="Diff-title">API Diff</h1>
+        <p class="Diff-package">
+            <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
+        </p>
+
+        <form class="Diff-form" method="get" action="/diff/{{.Pkg.ImportPath}}">
+            <div class="Diff-selectors">
+                <div class="Diff-selector">
+                    <label for="v1">From version:</label>
+                    <select name="v1" id="v1">
+                        <option value="">Select version...</option>
+                        {{range .Versions}}
+                        <option value="{{.Version}}"{{if eq .Version $.V1}} selected{{end}}>
+                            {{.Version}}{{if .IsStable}} (stable){{end}}{{if .IsCurrent}} - current{{end}}
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="Diff-arrow">→</div>
+                <div class="Diff-selector">
+                    <label for="v2">To version:</label>
+                    <select name="v2" id="v2">
+                        <option value="">Select version...</option>
+                        {{range .Versions}}
+                        <option value="{{.Version}}"{{if eq .Version $.V2}} selected{{end}}>
+                            {{.Version}}{{if .IsStable}} (stable){{end}}{{if .IsCurrent}} - current{{end}}
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+                <button type="submit" class="Diff-submit">Compare</button>
+            </div>
+        </form>
+
+        {{if .HasDiff}}
+        <div class="Diff-results">
+            <h2 class="Diff-resultsTitle">Changes from {{.V1}} to {{.V2}}</h2>
+
+            {{if .Diff}}
+            <div class="Diff-list">
+                {{range .Diff}}
+                <div class="DiffEntry DiffEntry--{{.Kind}}">
+                    <div class="DiffEntry-header">
+                        <span class="DiffEntry-kind">{{.Kind}}</span>
+                        <span class="DiffEntry-type">{{.Type}}</span>
+                        <span class="DiffEntry-name">{{.Name}}</span>
+                    </div>
+                    {{if .Synopsis}}
+                    <div class="DiffEntry-synopsis">{{.Synopsis}}</div>
+                    {{end}}
+                    {{if .OldDecl}}
+                    <div class="DiffEntry-old">
+                        <span class="DiffEntry-label">Old:</span>
+                        <pre class="DiffEntry-code">{{.OldDecl}}</pre>
+                    </div>
+                    {{end}}
+                    {{if .NewDecl}}
+                    <div class="DiffEntry-new">
+                        <span class="DiffEntry-label">New:</span>
+                        <pre class="DiffEntry-code">{{.NewDecl}}</pre>
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <div class="EmptyState">
+                <p>No API changes detected between these versions.</p>
+            </div>
+            {{end}}
+        </div>
+        {{else if or .V1 .V2}}
+        <div class="EmptyState">
+            <p>Please select both versions to compare.</p>
+        </div>
+        {{else}}
+        <div class="Diff-info">
+            <p>Select two versions above to see the API differences between them.</p>
+            <p>The diff will show added, removed, and changed symbols (functions, types, methods, constants, and variables).</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{template "footer" .}}

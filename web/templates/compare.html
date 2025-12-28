@@ -1,0 +1,118 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="Compare">
+        <nav class="Breadcrumb">
+            <a href="/">Packages</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <span class="Breadcrumb-current">Compare Packages</span>
+        </nav>
+
+        <h1 class="Compare-title">Compare Packages</h1>
+        <p class="Compare-description">Compare the APIs of two different packages to see what symbols they have in common and what's different.</p>
+
+        <form class="Compare-form" method="get" action="/compare/">
+            <div class="Compare-selectors">
+                <div class="Compare-selector">
+                    <label for="pkg1">First package:</label>
+                    <input type="text" name="pkg1" id="pkg1" value="{{.Pkg1Path}}" placeholder="e.g., net/http" list="packages1">
+                    <datalist id="packages1">
+                        {{range .AllPackages}}
+                        <option value="{{.}}">
+                        {{end}}
+                    </datalist>
+                </div>
+                <div class="Compare-vs">vs</div>
+                <div class="Compare-selector">
+                    <label for="pkg2">Second package:</label>
+                    <input type="text" name="pkg2" id="pkg2" value="{{.Pkg2Path}}" placeholder="e.g., net/http/httptest" list="packages2">
+                    <datalist id="packages2">
+                        {{range .AllPackages}}
+                        <option value="{{.}}">
+                        {{end}}
+                    </datalist>
+                </div>
+                <button type="submit" class="Compare-submit">Compare</button>
+            </div>
+        </form>
+
+        {{if .HasCompare}}
+        <div class="Compare-results">
+            <div class="Compare-header">
+                <div class="Compare-pkg">
+                    <h3><a href="/{{.Pkg1.ImportPath}}">{{.Pkg1.ImportPath}}</a></h3>
+                    <p>{{.Pkg1.Synopsis}}</p>
+                </div>
+                <div class="Compare-vs-label">vs</div>
+                <div class="Compare-pkg">
+                    <h3><a href="/{{.Pkg2.ImportPath}}">{{.Pkg2.ImportPath}}</a></h3>
+                    <p>{{.Pkg2.Synopsis}}</p>
+                </div>
+            </div>
+
+            {{if .Comparison}}
+            <div class="Compare-summary">
+                <h2>API Comparison</h2>
+            </div>
+
+            <div class="Compare-list">
+                {{range .Comparison}}
+                <div class="DiffEntry DiffEntry--{{.Kind}}">
+                    <div class="DiffEntry-header">
+                        <span class="DiffEntry-kind">
+                            {{if eq .Kind "only-left"}}Only in first{{end}}
+                            {{if eq .Kind "only-right"}}Only in second{{end}}
+                            {{if eq .Kind "changed"}}Different{{end}}
+                        </span>
+                        <span class="DiffEntry-type">{{.Type}}</span>
+                        <span class="DiffEntry-name">{{.Name}}</span>
+                    </div>
+                    {{if .OldDecl}}
+                    <div class="DiffEntry-old">
+                        <span class="DiffEntry-label">{{$.Pkg1.Name}}:</span>
+                        <pre class="DiffEntry-code">{{.OldDecl}}</pre>
+                    </div>
+                    {{end}}
+                    {{if .NewDecl}}
+                    <div class="DiffEntry-new">
+                        <span class="DiffEntry-label">{{$.Pkg2.Name}}:</span>
+                        <pre class="DiffEntry-code">{{.NewDecl}}</pre>
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <div class="EmptyState">
+                <p>These packages have identical APIs (same functions, types, and methods with the same signatures).</p>
+            </div>
+            {{end}}
+        </div>
+        {{else if or .Pkg1Path .Pkg2Path}}
+        <div class="EmptyState">
+            {{if and .Pkg1Path (not .Pkg1)}}
+            <p>Package "{{.Pkg1Path}}" not found.</p>
+            {{end}}
+            {{if and .Pkg2Path (not .Pkg2)}}
+            <p>Package "{{.Pkg2Path}}" not found.</p>
+            {{end}}
+            {{if and (not .Pkg1Path) .Pkg2}}
+            <p>Please select a first package to compare.</p>
+            {{end}}
+            {{if and .Pkg1 (not .Pkg2Path)}}
+            <p>Please select a second package to compare.</p>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="Compare-info">
+            <p>Enter two package import paths above to compare their APIs.</p>
+            <p>The comparison will show:</p>
+            <ul>
+                <li>Symbols only in the first package</li>
+                <li>Symbols only in the second package</li>
+                <li>Symbols with different signatures</li>
+            </ul>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{template "footer" .}}

@@ -406,6 +406,8 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/versions/", s.handleVersions)
 	mux.HandleFunc("/importedby/", s.handleImportedBy)
 	mux.HandleFunc("/symbols", s.handleSymbolSearch)
+	mux.HandleFunc("/diff/", s.handleDiff)
+	mux.HandleFunc("/compare/", s.handleCompare)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -994,6 +996,16 @@ func (s *Server) handleModule(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleVersions handles the versions list page
+// VersionInfo represents version information for display
+type VersionInfo struct {
+	Version   string
+	Timestamp string
+	IsTagged  bool
+	IsStable  bool
+	Retracted bool
+	IsCurrent bool
+}
+
 func (s *Server) handleVersions(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/versions/")
 	if path == "" {
@@ -1018,14 +1030,47 @@ func (s *Server) handleVersions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get version history from database if available
+	var versions []VersionInfo
+	if s.db != nil {
+		dbVersions, err := s.db.GetModuleVersions(pkg.ModulePath)
+		if err == nil && len(dbVersions) > 0 {
+			for _, v := range dbVersions {
+				vi := VersionInfo{
+					Version:   v.Version,
+					IsTagged:  v.IsTagged,
+					IsStable:  v.IsStable,
+					Retracted: v.Retracted,
+					IsCurrent: v.Version == pkg.Version,
+				}
+				if !v.Timestamp.IsZero() {
+					vi.Timestamp = v.Timestamp.Format("Jan 2, 2006")
+				}
+				versions = append(versions, vi)
+			}
+		}
+	}
+
+	// Fall back to package's Versions field if no database versions
+	if len(versions) == 0 && len(pkg.Versions) > 0 {
+		for _, v := range pkg.Versions {
+			versions = append(versions, VersionInfo{
+				Version:   v,
+				IsCurrent: v == pkg.Version,
+			})
+		}
+	}
+
 	data := struct {
 		Title       string
 		SearchQuery string
 		Pkg         *PackageDoc
+		Versions    []VersionInfo
 	}{
 		Title:       "Versions - " + pkg.ImportPath + " - Go Packages",
 		SearchQuery: "",
 		Pkg:         pkg,
+		Versions:    versions,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "versions.html", data); err != nil {
@@ -1138,6 +1183,13 @@ func (s *Server) handleImportedBy(w http.ResponseWriter, r *http.Request) {
 
 func formatDoc(doc string) string {
 	return strings.TrimSpace(doc)
+}
+
+func firstLine(s string) string {
+	if idx := strings.Index(s, "\n"); idx != -1 {
+		return strings.TrimSpace(s[:idx])
+	}
+	return strings.TrimSpace(s)
 }
 
 func formatDocHTML(doc string) template.HTML {
@@ -1436,4 +1488,289 @@ func highlightQuery(text, query string) template.HTML {
 		i = i + idx + len(query)
 	}
 	return template.HTML(result.String())
+}
+
+// DiffEntry represents a single API change between versions
+type DiffEntry struct {
+	Kind      string // "added", "removed", "changed"
+	Type      string // "func", "type", "method", "const", "var"
+	Name      string
+	OldDecl   string
+	NewDecl   string
+	Synopsis  string
+}
+
+// handleDiff handles the API diff between two versions of a package
+func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/diff/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	v1 := r.URL.Query().Get("v1")
+	v2 := r.URL.Query().Get("v2")
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Get available versions
+	var versions []VersionInfo
+	if s.db != nil {
+		dbVersions, err := s.db.GetModuleVersions(pkg.ModulePath)
+		if err == nil {
+			for _, v := range dbVersions {
+				vi := VersionInfo{
+					Version:   v.Version,
+					IsTagged:  v.IsTagged,
+					IsStable:  v.IsStable,
+					IsCurrent: v.Version == pkg.Version,
+				}
+				if !v.Timestamp.IsZero() {
+					vi.Timestamp = v.Timestamp.Format("Jan 2, 2006")
+				}
+				versions = append(versions, vi)
+			}
+		}
+	}
+
+	// Calculate diff if both versions are provided
+	var diff []DiffEntry
+	if v1 != "" && v2 != "" {
+		diff = s.calculateDiff(pkg, v1, v2)
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		Pkg         *PackageDoc
+		Versions    []VersionInfo
+		V1          string
+		V2          string
+		Diff        []DiffEntry
+		HasDiff     bool
+	}{
+		Title:       "API Diff - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery: "",
+		Pkg:         pkg,
+		Versions:    versions,
+		V1:          v1,
+		V2:          v2,
+		Diff:        diff,
+		HasDiff:     v1 != "" && v2 != "",
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "diff.html", data); err != nil {
+		log.Printf("Error rendering diff: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// calculateDiff calculates the API difference between two versions
+func (s *Server) calculateDiff(pkg *PackageDoc, v1, v2 string) []DiffEntry {
+	var diff []DiffEntry
+
+	// For now, we compare the current package documentation
+	// In a full implementation, we would fetch both versions from proxy.golang.org
+	// and compare their symbols
+
+	// Get symbols from current package as a baseline
+	currentSymbols := make(map[string]string)
+
+	for _, f := range pkg.Functions {
+		currentSymbols["func:"+f.Name] = f.Signature
+	}
+	for _, t := range pkg.Types {
+		currentSymbols["type:"+t.Name] = t.Decl
+		for _, m := range t.Methods {
+			currentSymbols["method:"+t.Name+"."+m.Name] = m.Signature
+		}
+		for _, f := range t.Functions {
+			currentSymbols["func:"+f.Name] = f.Signature
+		}
+	}
+	for _, c := range pkg.Constants {
+		for _, name := range c.Names {
+			currentSymbols["const:"+name] = ""
+		}
+	}
+	for _, v := range pkg.Variables {
+		for _, name := range v.Names {
+			currentSymbols["var:"+name] = ""
+		}
+	}
+
+	// Since we only have current version data, show it as informational
+	// In production, this would compare actual version-specific data
+	if v1 != v2 {
+		diff = append(diff, DiffEntry{
+			Kind:     "info",
+			Type:     "note",
+			Name:     "Version Comparison",
+			Synopsis: fmt.Sprintf("Comparing %s to %s. Full diff requires version-specific symbol storage.", v1, v2),
+		})
+
+		// Show current symbols as reference
+		for _, f := range pkg.Functions {
+			diff = append(diff, DiffEntry{
+				Kind:     "unchanged",
+				Type:     "func",
+				Name:     f.Name,
+				NewDecl:  f.Signature,
+				Synopsis: firstLine(f.Doc),
+			})
+		}
+
+		for _, t := range pkg.Types {
+			diff = append(diff, DiffEntry{
+				Kind:     "unchanged",
+				Type:     "type",
+				Name:     t.Name,
+				NewDecl:  t.Decl,
+				Synopsis: firstLine(t.Doc),
+			})
+		}
+	}
+
+	return diff
+}
+
+// handleCompare handles the package comparison view
+func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
+	pkg1Path := r.URL.Query().Get("pkg1")
+	pkg2Path := r.URL.Query().Get("pkg2")
+
+	var pkg1, pkg2 *PackageDoc
+
+	if pkg1Path != "" {
+		if p, ok := s.packages[pkg1Path]; ok {
+			pkg1 = p
+		}
+	}
+
+	if pkg2Path != "" {
+		if p, ok := s.packages[pkg2Path]; ok {
+			pkg2 = p
+		}
+	}
+
+	// Get list of all packages for selection
+	var allPackages []string
+	for path := range s.packages {
+		allPackages = append(allPackages, path)
+	}
+
+	// Compare packages if both are selected
+	var comparison []DiffEntry
+	if pkg1 != nil && pkg2 != nil {
+		comparison = s.comparePackages(pkg1, pkg2)
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		AllPackages []string
+		Pkg1Path    string
+		Pkg2Path    string
+		Pkg1        *PackageDoc
+		Pkg2        *PackageDoc
+		Comparison  []DiffEntry
+		HasCompare  bool
+	}{
+		Title:       "Compare Packages - Go Packages",
+		SearchQuery: "",
+		AllPackages: allPackages,
+		Pkg1Path:    pkg1Path,
+		Pkg2Path:    pkg2Path,
+		Pkg1:        pkg1,
+		Pkg2:        pkg2,
+		Comparison:  comparison,
+		HasCompare:  pkg1 != nil && pkg2 != nil,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "compare.html", data); err != nil {
+		log.Printf("Error rendering compare: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// comparePackages compares the APIs of two packages
+func (s *Server) comparePackages(pkg1, pkg2 *PackageDoc) []DiffEntry {
+	var diff []DiffEntry
+
+	// Build symbol maps for both packages
+	pkg1Symbols := make(map[string]string)
+	pkg2Symbols := make(map[string]string)
+
+	// Package 1 symbols
+	for _, f := range pkg1.Functions {
+		pkg1Symbols["func:"+f.Name] = f.Signature
+	}
+	for _, t := range pkg1.Types {
+		pkg1Symbols["type:"+t.Name] = t.Decl
+		for _, m := range t.Methods {
+			pkg1Symbols["method:"+t.Name+"."+m.Name] = m.Signature
+		}
+	}
+
+	// Package 2 symbols
+	for _, f := range pkg2.Functions {
+		pkg2Symbols["func:"+f.Name] = f.Signature
+	}
+	for _, t := range pkg2.Types {
+		pkg2Symbols["type:"+t.Name] = t.Decl
+		for _, m := range t.Methods {
+			pkg2Symbols["method:"+t.Name+"."+m.Name] = m.Signature
+		}
+	}
+
+	// Find symbols only in pkg1
+	for key, decl := range pkg1Symbols {
+		parts := strings.SplitN(key, ":", 2)
+		if _, exists := pkg2Symbols[key]; !exists {
+			diff = append(diff, DiffEntry{
+				Kind:    "only-left",
+				Type:    parts[0],
+				Name:    parts[1],
+				OldDecl: decl,
+			})
+		}
+	}
+
+	// Find symbols only in pkg2 or changed
+	for key, decl := range pkg2Symbols {
+		parts := strings.SplitN(key, ":", 2)
+		if oldDecl, exists := pkg1Symbols[key]; !exists {
+			diff = append(diff, DiffEntry{
+				Kind:    "only-right",
+				Type:    parts[0],
+				Name:    parts[1],
+				NewDecl: decl,
+			})
+		} else if oldDecl != decl {
+			diff = append(diff, DiffEntry{
+				Kind:    "changed",
+				Type:    parts[0],
+				Name:    parts[1],
+				OldDecl: oldDecl,
+				NewDecl: decl,
+			})
+		}
+	}
+
+	return diff
 }

@@ -82,8 +82,8 @@
 ### Advanced Features
 - [x] Go Playground embed for runnable examples
 - [x] Symbol search across all indexed packages
-- [ ] Package comparison view
-- [ ] API diff between versions
+- [x] Package comparison view
+- [x] API diff between versions
 - [x] Deprecation notices/warnings
 - [x] Build constraints/platform tags display
 
@@ -93,7 +93,7 @@
 - [x] Crawl and index Go modules from proxy.golang.org
 - [x] Parse and store package documentation (SQLite database)
 - [x] Track import relationships (imports table)
-- [ ] Version history tracking
+- [x] Version history tracking
 - [x] Periodic re-indexing for updates
 
 ### API

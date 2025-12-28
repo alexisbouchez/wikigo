@@ -308,6 +308,18 @@ func (c *Crawler) processModule(ctx context.Context, mv ModuleVersion) error {
 	c.stats.ModulesProcessed++
 	c.statsMu.Unlock()
 
+	// Record version in version history
+	dbVersion := &db.ModuleVersion{
+		ModulePath: mv.Path,
+		Version:    mv.Version,
+		Timestamp:  mv.Timestamp,
+		IsTagged:   isTaggedVersion(mv.Version),
+		IsStable:   isStableVersion(mv.Version),
+	}
+	if err := c.db.UpsertModuleVersion(dbVersion); err != nil {
+		log.Printf("Warning: failed to record version %s@%s: %v", mv.Path, mv.Version, err)
+	}
+
 	// Create temp directory for this module
 	tempDir, err := os.MkdirTemp(c.tempDir, "wikigo-*")
 	if err != nil {
