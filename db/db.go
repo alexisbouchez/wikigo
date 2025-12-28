@@ -331,13 +331,19 @@ func (db *DB) GetPackage(importPath string) (*Package, error) {
 
 	// Parse JSON fields
 	if versionsJSON.Valid {
-		json.Unmarshal([]byte(versionsJSON.String), &pkg.Versions)
+		if err := json.Unmarshal([]byte(versionsJSON.String), &pkg.Versions); err != nil {
+			return nil, fmt.Errorf("unmarshaling versions: %w", err)
+		}
 	}
 	if goosJSON.Valid {
-		json.Unmarshal([]byte(goosJSON.String), &pkg.GOOS)
+		if err := json.Unmarshal([]byte(goosJSON.String), &pkg.GOOS); err != nil {
+			return nil, fmt.Errorf("unmarshaling goos: %w", err)
+		}
 	}
 	if goarchJSON.Valid {
-		json.Unmarshal([]byte(goarchJSON.String), &pkg.GOARCH)
+		if err := json.Unmarshal([]byte(goarchJSON.String), &pkg.GOARCH); err != nil {
+			return nil, fmt.Errorf("unmarshaling goarch: %w", err)
+		}
 	}
 	if docJSON.Valid {
 		pkg.DocJSON = docJSON.String

@@ -344,7 +344,10 @@ func (s *Server) GetDBStats() (packageCount, symbolCount, importCount int) {
 	if s.db == nil {
 		return len(s.packages), 0, 0
 	}
-	packageCount, symbolCount, importCount, _ = s.db.GetStats()
+	packageCount, symbolCount, importCount, err := s.db.GetStats()
+	if err != nil {
+		log.Printf("Error getting database stats: %v", err)
+	}
 	return
 }
 
