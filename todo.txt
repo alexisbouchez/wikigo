@@ -50,7 +50,7 @@
 - [x] Copy button for code blocks
 - [x] Dark mode toggle
 - [x] Keyboard shortcuts (/ for search, etc.)
-- [ ] Expand/collapse all types in index
+- [x] Expand/collapse all types in index
 
 ### Documentation Links
 - [x] RFC references as clickable links (RFC 7231, etc.)

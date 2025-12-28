@@ -142,6 +142,30 @@ function hideImports() {
     if (popup) popup.classList.remove('open');
 }
 
+function toggleType(btn) {
+    const li = btn.closest('.Index-type');
+    const sublist = li.nextElementSibling;
+    if (sublist && sublist.classList.contains('Index-sublist')) {
+        const collapsed = sublist.getAttribute('data-collapsed') === 'true';
+        sublist.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
+        btn.textContent = collapsed ? '-' : '+';
+    }
+}
+
+function toggleAllTypes(btn) {
+    const sublists = document.querySelectorAll('.Index-sublist');
+    const buttons = document.querySelectorAll('.Index-typeToggle');
+    const expanding = btn.textContent === 'Expand All';
+
+    sublists.forEach(sublist => {
+        sublist.setAttribute('data-collapsed', expanding ? 'false' : 'true');
+    });
+    buttons.forEach(b => {
+        b.textContent = expanding ? '-' : '+';
+    });
+    btn.textContent = expanding ? 'Collapse All' : 'Expand All';
+}
+
 function copyImportPath(btn) {
     const path = btn.dataset.path;
     navigator.clipboard.writeText(path).then(() => {

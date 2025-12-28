@@ -121,6 +121,11 @@
             <!-- Index -->
             <section class="Documentation" id="pkg-index">
                 <h2 class="Documentation-title">Index</h2>
+                {{if .Pkg.Types}}
+                <div class="Index-actions">
+                    <button class="Index-toggle" onclick="toggleAllTypes(this)">Expand All</button>
+                </div>
+                {{end}}
                 <div class="Documentation-index">
                     <ul class="Index-list">
                         {{if .Pkg.Constants}}<li><a href="#pkg-constants">Constants</a></li>{{end}}
@@ -130,8 +135,13 @@
                         {{end}}
                         {{range .Pkg.Types}}
                         {{$typeName := .Name}}
-                        <li><a href="#{{.Name}}">type {{.Name}}</a></li>
-                        <ul class="Index-sublist">
+                        <li class="Index-type">
+                            <a href="#{{.Name}}">type {{.Name}}</a>
+                            {{if or .Functions .Methods}}
+                            <button class="Index-typeToggle" onclick="toggleType(this)" aria-label="Toggle methods">+</button>
+                            {{end}}
+                        </li>
+                        <ul class="Index-sublist" data-collapsed="true">
                             {{range .Functions}}
                             <li><a href="#{{.Name}}">func {{.Name}}</a></li>
                             {{end}}
