@@ -422,6 +422,24 @@ code {
     text-decoration: none;
 }
 
+.Package-externalLink {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-link);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    text-decoration: none;
+}
+
+.Package-externalLink:hover {
+    background: var(--color-background-secondary);
+    text-decoration: none;
+}
+
 /* Imports Popup */
 .ImportsPopup {
     display: none;

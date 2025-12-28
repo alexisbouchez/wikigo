@@ -41,8 +41,8 @@
 
 ### Repository & External Links
 - [x] Repository link (github.com, cs.opensource.google, etc.)
-- [ ] Open Source Insights link
-- [ ] deps.dev link
+- [x] Open Source Insights link
+- [x] deps.dev link
 - [ ] "Report a Vulnerability" link
 
 ### UI Enhancements
