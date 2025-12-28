@@ -42,6 +42,7 @@
             <a href="{{.Pkg.Repository}}" target="_blank" class="Package-repo" title="Repository">Repository</a>
             {{end}}
             <a href="https://deps.dev/go/{{.Pkg.ImportPath}}" target="_blank" class="Package-externalLink" title="View on deps.dev">deps.dev</a>
+            <a href="https://pkg.go.dev/vuln/{{.Pkg.ImportPath}}" target="_blank" class="Package-externalLink Package-vulnLink" title="Report a vulnerability">Report a Vulnerability</a>
         </div>
         {{if .Pkg.Imports}}
         <div class="ImportsPopup" id="importsPopup">

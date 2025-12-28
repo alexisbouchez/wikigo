@@ -43,7 +43,7 @@
 - [x] Repository link (github.com, cs.opensource.google, etc.)
 - [x] Open Source Insights link
 - [x] deps.dev link
-- [ ] "Report a Vulnerability" link
+- [x] "Report a Vulnerability" link
 
 ### UI Enhancements
 - [x] Copy button for package import path
