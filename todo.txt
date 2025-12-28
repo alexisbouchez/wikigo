@@ -3,8 +3,8 @@
 ## High Priority
 
 ### Metadata & Header
-- [ ] Version badge with version selector dropdown
-- [ ] Published date display
+- [x] Version badge with version selector dropdown
+- [x] Published date display
 - [x] License detection and display (BSD-3-Clause, MIT, etc.)
 - [x] Imports count with clickable popup showing import list
 - [ ] "Imported by" count (requires indexing ecosystem)
