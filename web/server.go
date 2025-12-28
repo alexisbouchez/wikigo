@@ -26,6 +26,7 @@ type PackageDoc struct {
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
 	Version          string     `json:"version,omitempty"`
+	Versions         []string   `json:"versions,omitempty"`
 	IsTagged         bool       `json:"is_tagged,omitempty"`
 	IsStable         bool       `json:"is_stable,omitempty"`
 	PublishedAt      string     `json:"published_at,omitempty"`
@@ -197,6 +198,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/license/", s.handleLicense)
 	mux.HandleFunc("/imports/", s.handleImports)
 	mux.HandleFunc("/mod/", s.handleModule)
+	mux.HandleFunc("/versions/", s.handleVersions)
 	mux.HandleFunc("/symbols", s.handleSymbolSearch)
 
 	log.Printf("Starting server on %s", addr)
@@ -778,6 +780,47 @@ func (s *Server) handleModule(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "module.html", data); err != nil {
 		log.Printf("Error rendering module: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleVersions handles the versions list page
+func (s *Server) handleVersions(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/versions/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		Pkg         *PackageDoc
+	}{
+		Title:       "Versions - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery: "",
+		Pkg:         pkg,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "versions.html", data); err != nil {
+		log.Printf("Error rendering versions: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

@@ -1,0 +1,49 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="Versions">
+        <nav class="Breadcrumb">
+            <a href="/">Packages</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <a href="/{{.Pkg.ImportPath}}">{{.Pkg.Name}}</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <span class="Breadcrumb-current">Versions</span>
+        </nav>
+
+        <h1 class="Versions-title">Versions</h1>
+        <p class="Versions-package">
+            <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
+        </p>
+
+        {{if .Pkg.Versions}}
+        <div class="Versions-list">
+            <table class="VersionTable">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $i, $v := .Pkg.Versions}}
+                    <tr{{if eq $i 0}} class="is-latest"{{end}}>
+                        <td class="VersionTable-version">
+                            {{$v}}
+                            {{if eq $i 0}}<span class="VersionBadge VersionBadge--latest">Latest</span>{{end}}
+                        </td>
+                        <td class="VersionTable-status">
+                            {{if hasPrefix $v "v0."}}<span class="VersionBadge VersionBadge--prerelease">Pre-release</span>{{else}}<span class="VersionBadge VersionBadge--stable">Stable</span>{{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="EmptyState">
+            <p>No version tags found for this package.</p>
+            <p>Version information is detected from git tags.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{template "footer" .}}

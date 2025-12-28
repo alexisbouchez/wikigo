@@ -25,6 +25,7 @@ type PackageDoc struct {
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
 	Version          string     `json:"version,omitempty"`
+	Versions         []string   `json:"versions,omitempty"`
 	IsTagged         bool       `json:"is_tagged,omitempty"`
 	IsStable         bool       `json:"is_stable,omitempty"`
 	PublishedAt      string     `json:"published_at,omitempty"`
@@ -222,6 +223,9 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	// Detect version
 	version := detectVersion(pkgDir, modulePath)
 
+	// Detect all versions
+	versions := detectAllVersions(pkgDir)
+
 	// Determine if version is tagged and stable
 	isTagged, isStable := analyzeVersion(version)
 
@@ -235,6 +239,7 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		Doc:             docPkg.Doc,
 		Synopsis:        doc.Synopsis(docPkg.Doc),
 		Version:         version,
+		Versions:        versions,
 		IsTagged:        isTagged,
 		IsStable:        isStable,
 		PublishedAt:     publishedAt,
@@ -875,4 +880,27 @@ func analyzeVersion(version string) (isTagged bool, isStable bool) {
 	}
 
 	return isTagged, isStable
+}
+
+// detectAllVersions returns all version tags from git
+func detectAllVersions(dir string) []string {
+	cmd := exec.Command("git", "tag", "-l", "--sort=-v:refname")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var versions []string
+	semverRegex := regexp.MustCompile(`^v?\d+\.\d+\.\d+`)
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" && semverRegex.MatchString(line) {
+			versions = append(versions, line)
+		}
+	}
+
+	return versions
 }

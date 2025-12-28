@@ -1468,6 +1468,79 @@ code {
     margin-bottom: 0.5rem;
 }
 
+/* Versions Page */
+.Versions {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.Versions-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.Versions-package {
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+}
+
+.Versions-package a {
+    font-family: var(--font-family-mono);
+}
+
+.VersionTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.VersionTable th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: var(--color-background-secondary);
+    font-weight: 500;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.VersionTable td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.VersionTable tr.is-latest {
+    background: rgba(0, 125, 156, 0.05);
+}
+
+.VersionTable-version {
+    font-family: var(--font-family-mono);
+    font-size: 0.9375rem;
+}
+
+.VersionBadge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    border-radius: 0.25rem;
+    margin-left: 0.5rem;
+}
+
+.VersionBadge--latest {
+    background: var(--color-brand);
+    color: #fff;
+}
+
+.VersionBadge--stable {
+    background: rgba(26, 127, 55, 0.1);
+    color: #1a7f37;
+}
+
+.VersionBadge--prerelease {
+    background: rgba(201, 103, 0, 0.1);
+    color: #c96700;
+}
+
 /* Footer */
 .Footer {
     margin-top: 3rem;

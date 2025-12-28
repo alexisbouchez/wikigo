@@ -22,7 +22,11 @@
         </div>
         <div class="Package-meta">
             {{if .Pkg.Version}}
+            {{if .Pkg.Versions}}
+            <a href="/versions/{{.Pkg.ImportPath}}" class="Package-version" title="View all versions">{{.Pkg.Version}}</a>
+            {{else}}
             <span class="Package-version" title="Version">{{.Pkg.Version}}</span>
+            {{end}}
             {{end}}
             {{if .Pkg.IsTagged}}
             <span class="Package-tagged" title="Tagged version">Tagged</span>
