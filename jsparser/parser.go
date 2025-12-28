@@ -83,7 +83,7 @@ func (p *Parser) extractSymbols(content, filePath string) []Symbol {
 	for i, line := range lines {
 		line = strings.TrimSpace(line)
 
-		// Export function
+		// ES6 Export function
 		if strings.HasPrefix(line, "export function ") || strings.HasPrefix(line, "export async function ") {
 			name := p.extractFunctionName(line)
 			if name != "" {
@@ -97,7 +97,7 @@ func (p *Parser) extractSymbols(content, filePath string) []Symbol {
 			}
 		}
 
-		// Export const/let arrow functions
+		// ES6 Export const/let arrow functions
 		if strings.HasPrefix(line, "export const ") || strings.HasPrefix(line, "export let ") {
 			if strings.Contains(line, "=>") || strings.Contains(line, "= function") {
 				name := p.extractConstName(line)
@@ -124,7 +124,7 @@ func (p *Parser) extractSymbols(content, filePath string) []Symbol {
 			}
 		}
 
-		// Export class
+		// ES6 Export class
 		if strings.HasPrefix(line, "export class ") || strings.HasPrefix(line, "export abstract class ") {
 			name := p.extractClassName(line)
 			if name != "" {
@@ -138,7 +138,7 @@ func (p *Parser) extractSymbols(content, filePath string) []Symbol {
 			}
 		}
 
-		// Export interface
+		// ES6 Export interface
 		if strings.HasPrefix(line, "export interface ") {
 			name := p.extractInterfaceName(line)
 			if name != "" {
@@ -152,7 +152,7 @@ func (p *Parser) extractSymbols(content, filePath string) []Symbol {
 			}
 		}
 
-		// Export type
+		// ES6 Export type
 		if strings.HasPrefix(line, "export type ") {
 			name := p.extractTypeName(line)
 			if name != "" {
@@ -166,13 +166,85 @@ func (p *Parser) extractSymbols(content, filePath string) []Symbol {
 			}
 		}
 
-		// Export enum
+		// ES6 Export enum
 		if strings.HasPrefix(line, "export enum ") {
 			name := p.extractEnumName(line)
 			if name != "" {
 				symbols = append(symbols, Symbol{
 					Name:     name,
 					Kind:     "enum",
+					Line:     i + 1,
+					Exported: true,
+					FilePath: filePath,
+				})
+			}
+		}
+
+		// CommonJS: module.exports = function(...)
+		if strings.Contains(line, "module.exports") && strings.Contains(line, "function") {
+			// Find the function keyword
+			idx := strings.Index(line, "function")
+			if idx != -1 {
+				// Skip past "function" (8 chars)
+				afterFunc := line[idx+8:]
+				afterFunc = strings.TrimSpace(afterFunc)
+
+				// Check if it's a named or anonymous function
+				if strings.HasPrefix(afterFunc, "(") {
+					// Anonymous function - use file name
+					baseName := filepath.Base(filePath)
+					baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
+					symbols = append(symbols, Symbol{
+						Name:     baseName,
+						Kind:     "function",
+						Line:     i + 1,
+						Exported: true,
+						FilePath: filePath,
+					})
+				} else {
+					// Named function
+					if parenIdx := strings.Index(afterFunc, "("); parenIdx != -1 {
+						name := strings.TrimSpace(afterFunc[:parenIdx])
+						if name != "" {
+							symbols = append(symbols, Symbol{
+								Name:     name,
+								Kind:     "function",
+								Line:     i + 1,
+								Exported: true,
+								FilePath: filePath,
+							})
+						}
+					}
+				}
+			}
+		}
+
+		// CommonJS: module.exports.name = ... or exports.name = ...
+		if (strings.Contains(line, "module.exports.") || strings.Contains(line, "exports.")) && strings.Contains(line, "=") {
+			var name string
+			if strings.Contains(line, "module.exports.") {
+				parts := strings.Split(line, "module.exports.")
+				if len(parts) > 1 {
+					name = strings.Split(parts[1], "=")[0]
+				}
+			} else if strings.Contains(line, "exports.") {
+				parts := strings.Split(line, "exports.")
+				if len(parts) > 1 {
+					name = strings.Split(parts[1], "=")[0]
+				}
+			}
+
+			name = strings.TrimSpace(name)
+			if name != "" {
+				kind := "const"
+				if strings.Contains(line, "function") || strings.Contains(line, "=>") {
+					kind = "function"
+				} else if strings.Contains(line, "class ") {
+					kind = "class"
+				}
+				symbols = append(symbols, Symbol{
+					Name:     name,
+					Kind:     kind,
 					Line:     i + 1,
 					Exported: true,
 					FilePath: filePath,

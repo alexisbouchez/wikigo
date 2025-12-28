@@ -271,6 +271,108 @@ func (db *DB) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_ai_docs_import_path ON ai_docs(import_path)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_docs_approved ON ai_docs(approved)`,
 		`CREATE INDEX IF NOT EXISTS idx_ai_docs_flagged ON ai_docs(flagged)`,
+
+		// JavaScript/TypeScript packages table
+		`CREATE TABLE IF NOT EXISTS js_packages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			version TEXT,
+			description TEXT,
+			author TEXT,
+			license TEXT,
+			repository_url TEXT,
+			homepage TEXT,
+			npm_url TEXT,
+			github_url TEXT,
+			main_file TEXT,
+			types_file TEXT,
+			has_typescript INTEGER DEFAULT 0,
+			stars INTEGER DEFAULT 0,
+			forks INTEGER DEFAULT 0,
+			keywords_json TEXT,
+			dependencies_json TEXT,
+			package_json TEXT,
+			readme TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// JavaScript/TypeScript symbols table
+		`CREATE TABLE IF NOT EXISTS js_symbols (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			signature TEXT,
+			package_id INTEGER NOT NULL,
+			package_name TEXT NOT NULL,
+			file_path TEXT,
+			line INTEGER DEFAULT 0,
+			exported INTEGER DEFAULT 0,
+			doc TEXT,
+			deprecated INTEGER DEFAULT 0,
+			FOREIGN KEY (package_id) REFERENCES js_packages(id) ON DELETE CASCADE
+		)`,
+
+		// Indexes for JS packages and symbols
+		`CREATE INDEX IF NOT EXISTS idx_js_packages_name ON js_packages(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_js_packages_author ON js_packages(author)`,
+		`CREATE INDEX IF NOT EXISTS idx_js_packages_stars ON js_packages(stars DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_js_symbols_name ON js_symbols(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_js_symbols_kind ON js_symbols(kind)`,
+		`CREATE INDEX IF NOT EXISTS idx_js_symbols_package ON js_symbols(package_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_js_symbols_exported ON js_symbols(exported)`,
+
+		// FTS for JavaScript/TypeScript packages
+		`CREATE VIRTUAL TABLE IF NOT EXISTS js_packages_fts USING fts4(
+			name,
+			description,
+			author,
+			keywords,
+			content=js_packages,
+			tokenize=porter
+		)`,
+
+		// FTS for JavaScript/TypeScript symbols
+		`CREATE VIRTUAL TABLE IF NOT EXISTS js_symbols_fts USING fts4(
+			name,
+			signature,
+			doc,
+			content=js_symbols,
+			tokenize=porter
+		)`,
+
+		// Triggers for JS packages FTS
+		`CREATE TRIGGER IF NOT EXISTS js_packages_ai AFTER INSERT ON js_packages BEGIN
+			INSERT INTO js_packages_fts(docid, name, description, author, keywords)
+			VALUES (new.id, new.name, new.description, new.author, new.keywords_json);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS js_packages_ad AFTER DELETE ON js_packages BEGIN
+			DELETE FROM js_packages_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS js_packages_au AFTER UPDATE ON js_packages BEGIN
+			DELETE FROM js_packages_fts WHERE docid = old.id;
+			INSERT INTO js_packages_fts(docid, name, description, author, keywords)
+			VALUES (new.id, new.name, new.description, new.author, new.keywords_json);
+		END`,
+
+		// Triggers for JS symbols FTS
+		`CREATE TRIGGER IF NOT EXISTS js_symbols_ai AFTER INSERT ON js_symbols BEGIN
+			INSERT INTO js_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS js_symbols_ad AFTER DELETE ON js_symbols BEGIN
+			DELETE FROM js_symbols_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS js_symbols_au AFTER UPDATE ON js_symbols BEGIN
+			DELETE FROM js_symbols_fts WHERE docid = old.id;
+			INSERT INTO js_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
 	}
 
 	for _, migration := range migrations {
@@ -897,4 +999,212 @@ func (db *DB) GetAIDocStats() (totalDocs, approvedDocs, flaggedDocs int, totalCo
 		FROM ai_docs
 	`).Scan(&totalDocs, &approvedDocs, &flaggedDocs, &totalCost)
 	return
+}
+
+// JSPackage represents a JavaScript/TypeScript package
+type JSPackage struct {
+	ID             int64
+	Name           string
+	Version        string
+	Description    string
+	Author         string
+	License        string
+	RepositoryURL  string
+	Homepage       string
+	NPMURL         string
+	GitHubURL      string
+	MainFile       string
+	TypesFile      string
+	HasTypeScript  bool
+	Stars          int
+	Forks          int
+	Keywords       []string
+	Dependencies   map[string]string
+	PackageJSON    string
+	README         string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IndexedAt      time.Time
+}
+
+// JSSymbol represents a JavaScript/TypeScript symbol
+type JSSymbol struct {
+	ID          int64
+	Name        string
+	Kind        string // function, class, method, interface, type, enum, const
+	Signature   string
+	PackageID   int64
+	PackageName string
+	FilePath    string
+	Line        int
+	Exported    bool
+	Doc         string
+	Deprecated  bool
+}
+
+// UpsertJSPackage inserts or updates a JavaScript/TypeScript package
+func (db *DB) UpsertJSPackage(pkg *JSPackage) (int64, error) {
+	keywordsJSON, _ := json.Marshal(pkg.Keywords)
+	dependenciesJSON, _ := json.Marshal(pkg.Dependencies)
+
+	result, err := db.conn.Exec(`
+		INSERT INTO js_packages (
+			name, version, description, author, license, repository_url,
+			homepage, npm_url, github_url, main_file, types_file,
+			has_typescript, stars, forks, keywords_json, dependencies_json,
+			package_json, readme, indexed_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+		ON CONFLICT(name) DO UPDATE SET
+			version=excluded.version,
+			description=excluded.description,
+			author=excluded.author,
+			license=excluded.license,
+			repository_url=excluded.repository_url,
+			homepage=excluded.homepage,
+			npm_url=excluded.npm_url,
+			github_url=excluded.github_url,
+			main_file=excluded.main_file,
+			types_file=excluded.types_file,
+			has_typescript=excluded.has_typescript,
+			stars=excluded.stars,
+			forks=excluded.forks,
+			keywords_json=excluded.keywords_json,
+			dependencies_json=excluded.dependencies_json,
+			package_json=excluded.package_json,
+			readme=excluded.readme,
+			updated_at=datetime('now'),
+			indexed_at=datetime('now')
+	`, pkg.Name, pkg.Version, pkg.Description, pkg.Author, pkg.License,
+		pkg.RepositoryURL, pkg.Homepage, pkg.NPMURL, pkg.GitHubURL,
+		pkg.MainFile, pkg.TypesFile, pkg.HasTypeScript, pkg.Stars, pkg.Forks,
+		keywordsJSON, dependenciesJSON, pkg.PackageJSON, pkg.README)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
+}
+
+// UpsertJSSymbol inserts or updates a JavaScript/TypeScript symbol
+func (db *DB) UpsertJSSymbol(sym *JSSymbol) error {
+	_, err := db.conn.Exec(`
+		INSERT INTO js_symbols (
+			name, kind, signature, package_id, package_name,
+			file_path, line, exported, doc, deprecated
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			signature=excluded.signature,
+			file_path=excluded.file_path,
+			line=excluded.line,
+			exported=excluded.exported,
+			doc=excluded.doc,
+			deprecated=excluded.deprecated
+	`, sym.Name, sym.Kind, sym.Signature, sym.PackageID, sym.PackageName,
+		sym.FilePath, sym.Line, sym.Exported, sym.Doc, sym.Deprecated)
+
+	return err
+}
+
+// DeleteJSPackageSymbols deletes all symbols for a package
+func (db *DB) DeleteJSPackageSymbols(packageID int64) error {
+	_, err := db.conn.Exec("DELETE FROM js_symbols WHERE package_id = ?", packageID)
+	return err
+}
+
+// SearchJSPackages searches for JavaScript/TypeScript packages
+func (db *DB) SearchJSPackages(query string, limit int) ([]*JSPackage, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, description, author, license, stars, forks
+		FROM js_packages
+		WHERE id IN (
+			SELECT docid FROM js_packages_fts
+			WHERE js_packages_fts MATCH ?
+			LIMIT ?
+		)
+		ORDER BY stars DESC
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []*JSPackage
+	for rows.Next() {
+		var pkg JSPackage
+		if err := rows.Scan(&pkg.ID, &pkg.Name, &pkg.Version, &pkg.Description,
+			&pkg.Author, &pkg.License, &pkg.Stars, &pkg.Forks); err != nil {
+			return nil, err
+		}
+		packages = append(packages, &pkg)
+	}
+
+	return packages, nil
+}
+
+// SearchJSSymbols searches for JavaScript/TypeScript symbols
+func (db *DB) SearchJSSymbols(query string, limit int) ([]*JSSymbol, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, package_name, file_path, line
+		FROM js_symbols
+		WHERE id IN (
+			SELECT docid FROM js_symbols_fts
+			WHERE js_symbols_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*JSSymbol
+	for rows.Next() {
+		var sym JSSymbol
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature,
+			&sym.PackageName, &sym.FilePath, &sym.Line); err != nil {
+			return nil, err
+		}
+		symbols = append(symbols, &sym)
+	}
+
+	return symbols, nil
+}
+
+// GetJSPackage retrieves a JavaScript/TypeScript package by name
+func (db *DB) GetJSPackage(name string) (*JSPackage, error) {
+	var pkg JSPackage
+	var keywordsJSON, dependenciesJSON sql.NullString
+
+	err := db.conn.QueryRow(`
+		SELECT id, name, version, description, author, license,
+			repository_url, homepage, npm_url, github_url,
+			main_file, types_file, has_typescript, stars, forks,
+			keywords_json, dependencies_json, package_json, readme,
+			created_at, updated_at, indexed_at
+		FROM js_packages WHERE name = ?
+	`, name).Scan(&pkg.ID, &pkg.Name, &pkg.Version, &pkg.Description,
+		&pkg.Author, &pkg.License, &pkg.RepositoryURL, &pkg.Homepage,
+		&pkg.NPMURL, &pkg.GitHubURL, &pkg.MainFile, &pkg.TypesFile,
+		&pkg.HasTypeScript, &pkg.Stars, &pkg.Forks,
+		&keywordsJSON, &dependenciesJSON, &pkg.PackageJSON, &pkg.README,
+		&pkg.CreatedAt, &pkg.UpdatedAt, &pkg.IndexedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if keywordsJSON.Valid {
+		json.Unmarshal([]byte(keywordsJSON.String), &pkg.Keywords)
+	}
+	if dependenciesJSON.Valid {
+		json.Unmarshal([]byte(dependenciesJSON.String), &pkg.Dependencies)
+	}
+
+	return &pkg, nil
 }

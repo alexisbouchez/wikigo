@@ -258,12 +258,59 @@ func (c *NPMCrawler) IndexPackage(name string) error {
 
 	log.Printf("Found %d symbols in %s", len(symbols), name)
 
-	// TODO: Store in database (need to extend schema first)
-	// For now, just log the results
-	for _, sym := range symbols {
-		if sym.Exported {
-			log.Printf("  %s: %s (line %d)", sym.Kind, sym.Name, sym.Line)
+	// Store package in database
+	if c.db != nil {
+		dbPkg := &db.JSPackage{
+			Name:          pkg.Name,
+			Version:       pkg.Version,
+			Description:   pkg.Description,
+			Author:        pkg.Author.Name,
+			License:       pkg.License,
+			RepositoryURL: pkg.Repository.URL,
+			Homepage:      pkg.Homepage,
+			NPMURL:        fmt.Sprintf("https://www.npmjs.com/package/%s", pkg.Name),
+			MainFile:      pkg.Main,
+			TypesFile:     pkg.Types,
+			HasTypeScript: pkg.TypeScript,
+			Keywords:      pkg.Keywords,
+			Dependencies:  pkg.Dependencies,
 		}
+
+		pkgID, err := c.db.UpsertJSPackage(dbPkg)
+		if err != nil {
+			return fmt.Errorf("storing package: %w", err)
+		}
+
+		// Delete old symbols
+		if err := c.db.DeleteJSPackageSymbols(pkgID); err != nil {
+			return fmt.Errorf("deleting old symbols: %w", err)
+		}
+
+		// Store symbols
+		exportedCount := 0
+		for _, sym := range symbols {
+			dbSym := &db.JSSymbol{
+				Name:        sym.Name,
+				Kind:        sym.Kind,
+				Signature:   sym.Signature,
+				PackageID:   pkgID,
+				PackageName: pkg.Name,
+				FilePath:    sym.FilePath,
+				Line:        sym.Line,
+				Exported:    sym.Exported,
+				Doc:         sym.Doc,
+			}
+
+			if err := c.db.UpsertJSSymbol(dbSym); err != nil {
+				log.Printf("Warning: failed to store symbol %s: %v", sym.Name, err)
+			}
+
+			if sym.Exported {
+				exportedCount++
+			}
+		}
+
+		log.Printf("Stored %d symbols (%d exported) in database", len(symbols), exportedCount)
 	}
 
 	return nil

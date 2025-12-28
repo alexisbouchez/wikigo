@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexisbouchez/wikigo/db"
 	"github.com/alexisbouchez/wikigo/jsparser"
 )
 
@@ -43,6 +44,7 @@ type GitHubRepository struct {
 
 // GitHubCrawler fetches and indexes GitHub repositories
 type GitHubCrawler struct {
+	db        *db.DB
 	client    *http.Client
 	parser    *jsparser.Parser
 	tempDir   string
@@ -51,13 +53,14 @@ type GitHubCrawler struct {
 }
 
 // NewGitHubCrawler creates a new GitHub crawler
-func NewGitHubCrawler(token string) (*GitHubCrawler, error) {
+func NewGitHubCrawler(database *db.DB, token string) (*GitHubCrawler, error) {
 	tempDir, err := os.MkdirTemp("", "github-crawler-*")
 	if err != nil {
 		return nil, fmt.Errorf("creating temp dir: %w", err)
 	}
 
 	return &GitHubCrawler{
+		db:        database,
 		client:    &http.Client{Timeout: 60 * time.Second},
 		parser:    jsparser.NewParser(),
 		tempDir:   tempDir,
@@ -301,15 +304,65 @@ func (c *GitHubCrawler) IndexRepository(owner, repo string) error {
 
 	log.Printf("Found %d symbols in %s/%s", len(symbols), owner, repo)
 
-	// Log results
-	exportedCount := 0
-	for _, sym := range symbols {
-		if sym.Exported {
-			exportedCount++
-		}
-	}
-	log.Printf("  %d exported symbols", exportedCount)
+	// Store in database
+	if c.db != nil {
+		// Build package name from repo
+		pkgName := repository.FullName
 
-	// TODO: Store in database
+		// Determine license
+		license := ""
+		if repository.License != nil {
+			license = repository.License.Name
+		}
+
+		dbPkg := &db.JSPackage{
+			Name:          pkgName,
+			Description:   repository.Description,
+			License:       license,
+			RepositoryURL: repository.CloneURL,
+			Homepage:      repository.HTMLURL,
+			GitHubURL:     repository.HTMLURL,
+			Stars:         repository.Stars,
+			Forks:         repository.Forks,
+			Keywords:      repository.Topics,
+		}
+
+		pkgID, err := c.db.UpsertJSPackage(dbPkg)
+		if err != nil {
+			return fmt.Errorf("storing package: %w", err)
+		}
+
+		// Delete old symbols
+		if err := c.db.DeleteJSPackageSymbols(pkgID); err != nil {
+			return fmt.Errorf("deleting old symbols: %w", err)
+		}
+
+		// Store symbols
+		exportedCount := 0
+		for _, sym := range symbols {
+			dbSym := &db.JSSymbol{
+				Name:        sym.Name,
+				Kind:        sym.Kind,
+				Signature:   sym.Signature,
+				PackageID:   pkgID,
+				PackageName: pkgName,
+				FilePath:    sym.FilePath,
+				Line:        sym.Line,
+				Exported:    sym.Exported,
+				Doc:         sym.Doc,
+			}
+
+			if err := c.db.UpsertJSSymbol(dbSym); err != nil {
+				log.Printf("Warning: failed to store symbol %s: %v", sym.Name, err)
+			}
+
+			if sym.Exported {
+				exportedCount++
+			}
+		}
+
+		log.Printf("Stored %d symbols (%d exported) in database", len(symbols), exportedCount)
+	}
+
 	return nil
 }
