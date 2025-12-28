@@ -16,7 +16,7 @@
 - [x] Sticky sidebar that scrolls with content
 
 ### Examples Section
-- [ ] Dedicated Examples section in index
+- [x] Dedicated Examples section in index
 - [ ] Example code with "Share" button
 - [ ] Example code with "Format" button
 - [ ] Example code with "Run" button (Go Playground integration)
