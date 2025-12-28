@@ -17,21 +17,22 @@ import (
 
 // PackageDoc represents complete documentation for a Go package
 type PackageDoc struct {
-	ImportPath   string     `json:"import_path"`
-	Name         string     `json:"name"`
-	Doc          string     `json:"doc"`
-	Synopsis     string     `json:"synopsis"`
-	License      string     `json:"license,omitempty"`
-	Repository   string     `json:"repository,omitempty"`
-	HasValidMod  bool       `json:"has_valid_mod,omitempty"`
-	GoVersion    string     `json:"go_version,omitempty"`
-	Constants    []Constant `json:"constants"`
-	Variables    []Variable `json:"variables"`
-	Functions    []Function `json:"functions"`
-	Types        []Type     `json:"types"`
-	Examples     []Example  `json:"examples"`
-	Imports      []string   `json:"imports"`
-	Filenames    []string   `json:"filenames"`
+	ImportPath       string     `json:"import_path"`
+	Name             string     `json:"name"`
+	Doc              string     `json:"doc"`
+	Synopsis         string     `json:"synopsis"`
+	License          string     `json:"license,omitempty"`
+	Redistributable  bool       `json:"redistributable,omitempty"`
+	Repository       string     `json:"repository,omitempty"`
+	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
+	GoVersion        string     `json:"go_version,omitempty"`
+	Constants        []Constant `json:"constants"`
+	Variables        []Variable `json:"variables"`
+	Functions        []Function `json:"functions"`
+	Types            []Type     `json:"types"`
+	Examples         []Example  `json:"examples"`
+	Imports          []string   `json:"imports"`
+	Filenames        []string   `json:"filenames"`
 }
 
 // Constant represents a documented constant
@@ -206,15 +207,16 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 
 	// Build result
 	result := &PackageDoc{
-		ImportPath:  pkgPath,
-		Name:        docPkg.Name,
-		Doc:         docPkg.Doc,
-		Synopsis:    doc.Synopsis(docPkg.Doc),
-		License:     license,
-		Repository:  repository,
-		HasValidMod: hasValidMod,
-		GoVersion:   goVersion,
-		Filenames:   filenames,
+		ImportPath:      pkgPath,
+		Name:            docPkg.Name,
+		Doc:             docPkg.Doc,
+		Synopsis:        doc.Synopsis(docPkg.Doc),
+		License:         license,
+		Redistributable: isRedistributable(license),
+		Repository:      repository,
+		HasValidMod:     hasValidMod,
+		GoVersion:       goVersion,
+		Filenames:       filenames,
 	}
 
 	// Extract imports
@@ -570,6 +572,22 @@ func identifyLicense(content string) string {
 	}
 
 	return "Unknown"
+}
+
+// isRedistributable checks if a license allows redistribution
+func isRedistributable(license string) bool {
+	redistributable := map[string]bool{
+		"MIT":          true,
+		"Apache-2.0":   true,
+		"BSD-2-Clause": true,
+		"BSD-3-Clause": true,
+		"ISC":          true,
+		"MPL-2.0":      true,
+		"Unlicense":    true,
+		"CC0-1.0":      true,
+		"LGPL":         true,
+	}
+	return redistributable[license]
 }
 
 // detectGoMod checks for a valid go.mod and extracts Go version

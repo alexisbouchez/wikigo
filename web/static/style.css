@@ -354,6 +354,17 @@ code {
     border-radius: 0.25rem;
 }
 
+.Package-redistributable {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6f42c1;
+    background: rgba(111, 66, 193, 0.1);
+    border-radius: 0.25rem;
+}
+
 .Package-goVersion {
     display: inline-flex;
     align-items: center;

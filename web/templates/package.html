@@ -24,6 +24,9 @@
             {{if .Pkg.License}}
             <span class="Package-license" title="License">{{.Pkg.License}}</span>
             {{end}}
+            {{if .Pkg.Redistributable}}
+            <span class="Package-redistributable" title="Redistributable license">Redistributable</span>
+            {{end}}
             {{if .Pkg.GoVersion}}
             <span class="Package-goVersion" title="Go version">Go {{.Pkg.GoVersion}}</span>
             {{end}}

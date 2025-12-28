@@ -21,21 +21,22 @@ var staticFS embed.FS
 
 // PackageDoc represents complete documentation for a Go package
 type PackageDoc struct {
-	ImportPath   string     `json:"import_path"`
-	Name         string     `json:"name"`
-	Doc          string     `json:"doc"`
-	Synopsis     string     `json:"synopsis"`
-	License      string     `json:"license,omitempty"`
-	Repository   string     `json:"repository,omitempty"`
-	HasValidMod  bool       `json:"has_valid_mod,omitempty"`
-	GoVersion    string     `json:"go_version,omitempty"`
-	Constants    []Constant `json:"constants"`
-	Variables    []Variable `json:"variables"`
-	Functions    []Function `json:"functions"`
-	Types        []Type     `json:"types"`
-	Examples     []Example  `json:"examples"`
-	Imports      []string   `json:"imports"`
-	Filenames    []string   `json:"filenames"`
+	ImportPath       string     `json:"import_path"`
+	Name             string     `json:"name"`
+	Doc              string     `json:"doc"`
+	Synopsis         string     `json:"synopsis"`
+	License          string     `json:"license,omitempty"`
+	Redistributable  bool       `json:"redistributable,omitempty"`
+	Repository       string     `json:"repository,omitempty"`
+	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
+	GoVersion        string     `json:"go_version,omitempty"`
+	Constants        []Constant `json:"constants"`
+	Variables        []Variable `json:"variables"`
+	Functions        []Function `json:"functions"`
+	Types            []Type     `json:"types"`
+	Examples         []Example  `json:"examples"`
+	Imports          []string   `json:"imports"`
+	Filenames        []string   `json:"filenames"`
 }
 
 // Subdirectory represents a child package
