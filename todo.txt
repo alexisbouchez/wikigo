@@ -35,8 +35,8 @@
 ### Quality Indicators
 - [x] Valid go.mod file check
 - [x] Redistributable license badge
-- [ ] Tagged version indicator
-- [ ] Stable version indicator
+- [x] Tagged version indicator
+- [x] Stable version indicator
 - [x] "Learn more about best practices" link
 
 ### Repository & External Links
