@@ -11,7 +11,7 @@
 
 ### Navigation
 - [x] Breadcrumb navigation (Discover Packages > Standard library > net > http)
-- [ ] Collapsible "Jump To" sidebar sections
+- [x] Collapsible "Jump To" sidebar sections
 - [ ] Mobile-responsive hamburger menu
 - [x] Sticky sidebar that scrolls with content
 

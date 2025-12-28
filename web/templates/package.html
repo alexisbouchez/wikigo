@@ -35,42 +35,48 @@
                 </ul>
 
                 {{if or .Pkg.Constants .Pkg.Variables}}
-                <h3 class="Package-navSection">Constants and Variables</h3>
-                <ul class="Package-navList">
-                    {{if .Pkg.Constants}}<li><a href="#pkg-constants">Constants</a></li>{{end}}
-                    {{if .Pkg.Variables}}<li><a href="#pkg-variables">Variables</a></li>{{end}}
-                </ul>
+                <details class="Package-navDetails" open>
+                    <summary class="Package-navSection">Constants and Variables</summary>
+                    <ul class="Package-navList">
+                        {{if .Pkg.Constants}}<li><a href="#pkg-constants">Constants</a></li>{{end}}
+                        {{if .Pkg.Variables}}<li><a href="#pkg-variables">Variables</a></li>{{end}}
+                    </ul>
+                </details>
                 {{end}}
 
                 {{if .Pkg.Functions}}
-                <h3 class="Package-navSection">Functions</h3>
-                <ul class="Package-navList">
-                    {{range .Pkg.Functions}}
-                    <li><a href="#{{.Name}}">{{.Name}}</a></li>
-                    {{end}}
-                </ul>
+                <details class="Package-navDetails" open>
+                    <summary class="Package-navSection">Functions</summary>
+                    <ul class="Package-navList">
+                        {{range .Pkg.Functions}}
+                        <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                        {{end}}
+                    </ul>
+                </details>
                 {{end}}
 
                 {{if .Pkg.Types}}
-                <h3 class="Package-navSection">Types</h3>
-                <ul class="Package-navList">
-                    {{range .Pkg.Types}}
-                    {{$typeName := .Name}}
-                    <li>
-                        <a href="#{{.Name}}">type {{.Name}}</a>
-                        {{if or .Functions .Methods}}
-                        <ul class="Package-navSublist">
-                            {{range .Functions}}
-                            <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                <details class="Package-navDetails" open>
+                    <summary class="Package-navSection">Types</summary>
+                    <ul class="Package-navList">
+                        {{range .Pkg.Types}}
+                        {{$typeName := .Name}}
+                        <li>
+                            <a href="#{{.Name}}">type {{.Name}}</a>
+                            {{if or .Functions .Methods}}
+                            <ul class="Package-navSublist">
+                                {{range .Functions}}
+                                <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                                {{end}}
+                                {{range .Methods}}
+                                <li><a href="#{{$typeName}}.{{.Name}}">{{.Name}}</a></li>
+                                {{end}}
+                            </ul>
                             {{end}}
-                            {{range .Methods}}
-                            <li><a href="#{{$typeName}}.{{.Name}}">{{.Name}}</a></li>
-                            {{end}}
-                        </ul>
+                        </li>
                         {{end}}
-                    </li>
-                    {{end}}
-                </ul>
+                    </ul>
+                </details>
                 {{end}}
             </div>
         </nav>

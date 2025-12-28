@@ -343,11 +343,41 @@ code {
     margin-bottom: 0.75rem;
 }
 
+.Package-navDetails {
+    margin: 1rem 0 0;
+}
+
+.Package-navDetails > .Package-navList {
+    margin-top: 0.5rem;
+}
+
 .Package-navSection {
     font-size: 0.8125rem;
     font-weight: 600;
     color: var(--color-text-secondary);
-    margin: 1.5rem 0 0.5rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.Package-navSection::-webkit-details-marker {
+    display: none;
+}
+
+.Package-navSection::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 5px solid var(--color-text-secondary);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform 0.15s;
+}
+
+.Package-navDetails[open] > .Package-navSection::before {
+    transform: rotate(90deg);
 }
 
 .Package-navList {
