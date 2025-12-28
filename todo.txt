@@ -99,4 +99,4 @@
 ### API
 - [x] JSON API for package metadata
 - [x] Search API endpoint
-- [ ] Badge generation endpoint (shields.io compatible)
+- [x] Badge generation endpoint (shields.io compatible)

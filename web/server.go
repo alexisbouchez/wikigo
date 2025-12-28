@@ -181,6 +181,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/", s.handleHome)
 	mux.HandleFunc("/search", s.handleSearch)
 	mux.HandleFunc("/api/", s.handleAPI)
+	mux.HandleFunc("/badge/", s.handleBadge)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -377,6 +378,98 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(pkg)
+}
+
+// handleBadge handles badge generation (shields.io compatible)
+func (s *Server) handleBadge(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/badge/")
+	if path == "" {
+		http.Error(w, "package path required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse badge type from query param (default: go-version)
+	badgeType := r.URL.Query().Get("type")
+	if badgeType == "" {
+		badgeType = "go-version"
+	}
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "max-age=3600")
+
+	if !ok {
+		// Return unknown badge
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"schemaVersion": 1,
+			"label":         "go",
+			"message":       "unknown",
+			"color":         "lightgrey",
+		})
+		return
+	}
+
+	// Generate badge based on type
+	var badge map[string]interface{}
+	switch badgeType {
+	case "go-version":
+		version := pkg.GoVersion
+		if version == "" {
+			version = "unknown"
+		}
+		badge = map[string]interface{}{
+			"schemaVersion": 1,
+			"label":         "go",
+			"message":       version,
+			"color":         "00add8",
+		}
+	case "license":
+		license := pkg.License
+		color := "blue"
+		if license == "" {
+			license = "unknown"
+			color = "lightgrey"
+		}
+		badge = map[string]interface{}{
+			"schemaVersion": 1,
+			"label":         "license",
+			"message":       license,
+			"color":         color,
+		}
+	case "valid-mod":
+		msg := "yes"
+		color := "brightgreen"
+		if !pkg.HasValidMod {
+			msg = "no"
+			color = "red"
+		}
+		badge = map[string]interface{}{
+			"schemaVersion": 1,
+			"label":         "go.mod",
+			"message":       msg,
+			"color":         color,
+		}
+	default:
+		badge = map[string]interface{}{
+			"schemaVersion": 1,
+			"label":         "wikigo",
+			"message":       pkg.Name,
+			"color":         "00add8",
+		}
+	}
+
+	json.NewEncoder(w).Encode(badge)
 }
 
 // Template helper functions
