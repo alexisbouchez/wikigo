@@ -1,0 +1,102 @@
+# wikigo - Missing Features from pkg.go.dev
+
+## High Priority
+
+### Metadata & Header
+- [ ] Version badge with version selector dropdown
+- [ ] Published date display
+- [ ] License detection and display (BSD-3-Clause, MIT, etc.)
+- [ ] Imports count with clickable popup showing import list
+- [ ] "Imported by" count (requires indexing ecosystem)
+
+### Navigation
+- [ ] Breadcrumb navigation (Discover Packages > Standard library > net > http)
+- [ ] Collapsible "Jump To" sidebar sections
+- [ ] Mobile-responsive hamburger menu
+- [ ] Sticky sidebar that scrolls with content
+
+### Examples Section
+- [ ] Dedicated Examples section in index
+- [ ] Example code with "Share" button
+- [ ] Example code with "Format" button
+- [ ] Example code with "Run" button (Go Playground integration)
+- [ ] Expandable/collapsible example blocks
+
+### Source Files Section
+- [ ] List all source files in package
+- [ ] Link each file to source browser with line count
+
+### Directories Section
+- [ ] Show subpackages/subdirectories
+- [ ] Synopsis for each subdirectory
+
+## Medium Priority
+
+### Quality Indicators
+- [ ] Valid go.mod file check
+- [ ] Redistributable license badge
+- [ ] Tagged version indicator
+- [ ] Stable version indicator
+- [ ] "Learn more about best practices" link
+
+### Repository & External Links
+- [ ] Repository link (github.com, cs.opensource.google, etc.)
+- [ ] Open Source Insights link
+- [ ] deps.dev link
+- [ ] "Report a Vulnerability" link
+
+### UI Enhancements
+- [ ] Copy button for package import path
+- [ ] Copy button for code blocks
+- [ ] Dark mode toggle
+- [ ] Keyboard shortcuts (/ for search, etc.)
+- [ ] Expand/collapse all types in index
+
+### Documentation Links
+- [ ] RFC references as clickable links (RFC 7231, etc.)
+- [ ] URL detection and auto-linking in docs
+- [ ] Cross-package type linking (e.g., io.Reader -> io package)
+
+## Low Priority
+
+### Search Enhancements
+- [ ] Search within package (symbols, docs)
+- [ ] Search suggestions/autocomplete
+- [ ] Filter by type (functions, types, methods)
+- [ ] Search result highlighting
+
+### Additional Pages
+- [ ] License full text page
+- [ ] Imports list page
+- [ ] Imported by page (paginated)
+- [ ] Package versions list page
+- [ ] Module page (go.mod info)
+
+### Performance & Polish
+- [ ] Lazy loading for large packages
+- [ ] Anchor link highlight animation
+- [ ] Smooth scroll behavior
+- [ ] Print-friendly stylesheet
+- [ ] SEO meta tags (og:image, description, etc.)
+
+### Advanced Features
+- [ ] Go Playground embed for runnable examples
+- [ ] Symbol search across all indexed packages
+- [ ] Package comparison view
+- [ ] API diff between versions
+- [ ] Deprecation notices/warnings
+- [ ] Build constraints/platform tags display
+
+## Infrastructure
+
+### Indexing
+- [ ] Crawl and index Go modules from proxy.golang.org
+- [ ] Parse and store package documentation
+- [ ] Track import relationships
+- [ ] Version history tracking
+- [ ] Periodic re-indexing for updates
+
+### API
+- [ ] JSON API for package metadata
+- [ ] Search API endpoint
+- [ ] Badge generation endpoint (shields.io compatible)

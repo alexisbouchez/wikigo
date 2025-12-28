@@ -1,0 +1,634 @@
+/* Reset and Base */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+:root {
+    --color-brand: #007d9c;
+    --color-brand-dark: #00add8;
+    --color-text: #202224;
+    --color-text-secondary: #6e7072;
+    --color-background: #fff;
+    --color-background-secondary: #f5f5f5;
+    --color-border: #d6d6d6;
+    --color-link: #007d9c;
+    --color-code-bg: #f7f7f7;
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-family-mono: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    --max-width: 98rem;
+    --nav-width: 16.5rem;
+}
+
+html {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    color: var(--color-text);
+    background: var(--color-background);
+}
+
+a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+p {
+    margin: 0 0 1rem;
+}
+
+pre {
+    margin: 0 0 1rem;
+    padding: 1rem;
+    overflow-x: auto;
+    font-family: var(--font-family-mono);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    background: var(--color-code-bg);
+    border-radius: 0.375rem;
+}
+
+code {
+    font-family: var(--font-family-mono);
+    font-size: 0.875em;
+}
+
+/* Header */
+.Header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Header-inner {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0.75rem 1.5rem;
+}
+
+.Header-nav {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.Header-logo {
+    display: flex;
+    align-items: center;
+}
+
+.Header-logo img {
+    height: 28px;
+}
+
+.Header-links {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.Header-links a {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.Header-links a:hover {
+    color: var(--color-brand);
+    text-decoration: none;
+}
+
+/* Search Form */
+.SearchForm {
+    display: flex;
+    flex: 1;
+    max-width: 32rem;
+    margin-left: auto;
+}
+
+.SearchForm-input {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem 0 0 0.375rem;
+    outline: none;
+}
+
+.SearchForm-input:focus {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(0, 125, 156, 0.1);
+}
+
+.SearchForm-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    color: #fff;
+    background: var(--color-brand);
+    border: 1px solid var(--color-brand);
+    border-left: none;
+    border-radius: 0 0.375rem 0.375rem 0;
+    cursor: pointer;
+}
+
+.SearchForm-submit:hover {
+    background: #006880;
+}
+
+/* Main */
+.Main {
+    min-height: calc(100vh - 10rem);
+}
+
+/* Container */
+.Container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* Landing */
+.Landing {
+    max-width: 64rem;
+    margin: 0 auto;
+}
+
+.Landing-title {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.Landing-description {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+}
+
+/* Package List */
+.PackageList {
+    margin-top: 2rem;
+}
+
+.PackageList h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.PackageTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.PackageTable th,
+.PackageTable td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.PackageTable th {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.PackageLink {
+    font-weight: 500;
+    font-family: var(--font-family-mono);
+    font-size: 0.9375rem;
+}
+
+.PackageSynopsis {
+    color: var(--color-text-secondary);
+}
+
+/* Package Page */
+.Package {
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.Package-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Package-breadcrumb {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.Package-breadcrumbDivider {
+    margin: 0 0.25rem;
+}
+
+.Package-title {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+}
+
+.Package-badges {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.Badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-family: var(--font-family-mono);
+    background: var(--color-background-secondary);
+    border-radius: 0.25rem;
+}
+
+/* Package Body */
+.Package-body {
+    display: flex;
+    gap: 2rem;
+    padding: 0 1.5rem;
+}
+
+/* Package Navigation */
+.Package-nav {
+    flex-shrink: 0;
+    width: var(--nav-width);
+    padding: 1.5rem 0;
+}
+
+.Package-navInner {
+    position: sticky;
+    top: 5rem;
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+}
+
+.Package-navTitle {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.Package-navSection {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin: 1.5rem 0 0.5rem;
+}
+
+.Package-navList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.Package-navList li {
+    margin: 0.25rem 0;
+}
+
+.Package-navList a {
+    display: block;
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+    color: var(--color-text);
+}
+
+.Package-navList a:hover {
+    color: var(--color-brand);
+    text-decoration: none;
+}
+
+.Package-navSublist {
+    list-style: none;
+    padding-left: 1rem;
+    margin: 0.25rem 0;
+}
+
+.Package-navSublist a {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+}
+
+/* Package Content */
+.Package-content {
+    flex: 1;
+    min-width: 0;
+    padding: 1.5rem 0;
+}
+
+/* Documentation Sections */
+.Documentation {
+    margin-bottom: 3rem;
+}
+
+.Documentation-title {
+    font-size: 1.5rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Documentation-overview p {
+    max-width: 48rem;
+}
+
+.Documentation-overview pre {
+    max-width: 64rem;
+}
+
+/* Index */
+.Index-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    column-count: 2;
+    column-gap: 2rem;
+}
+
+.Index-list > li {
+    break-inside: avoid;
+    padding: 0.25rem 0;
+}
+
+.Index-list a {
+    font-family: var(--font-family-mono);
+    font-size: 0.875rem;
+}
+
+.Index-sublist {
+    list-style: none;
+    padding-left: 1.5rem;
+    margin: 0;
+}
+
+/* Function/Type Documentation */
+.Documentation-function,
+.Documentation-type {
+    margin-bottom: 2.5rem;
+    padding-top: 1rem;
+}
+
+.Documentation-functionHeader,
+.Documentation-typeHeader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.Documentation-idLink {
+    color: var(--color-text);
+}
+
+.Documentation-idLink:hover {
+    color: var(--color-brand);
+}
+
+.Documentation-source {
+    font-size: 0.75rem;
+    font-weight: normal;
+    color: var(--color-text-secondary);
+}
+
+.Documentation-signature,
+.Documentation-declaration {
+    margin-bottom: 1rem;
+}
+
+.Documentation-functionBody,
+.Documentation-typeBody {
+    max-width: 48rem;
+}
+
+.Documentation-functionBody p,
+.Documentation-typeBody p {
+    margin-bottom: 0.75rem;
+}
+
+.Documentation-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Documentation-subheader {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem;
+}
+
+.Documentation-overview pre code,
+.Documentation-functionBody pre code,
+.Documentation-typeBody pre code {
+    display: block;
+}
+
+.Documentation-sourceFiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+}
+
+.Documentation-sourceFiles a {
+    font-family: var(--font-family-mono);
+    font-size: 0.875rem;
+}
+
+.Documentation-constant,
+.Documentation-variable {
+    margin-bottom: 1.5rem;
+}
+
+.Documentation-doc {
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+/* Examples */
+.Examples-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.Examples-list li {
+    display: inline;
+}
+
+.Examples-list a {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.25rem;
+}
+
+.Example {
+    margin: 1rem 0;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+}
+
+.Example-header {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--color-background-secondary);
+}
+
+.Example-header:hover {
+    background: #eee;
+}
+
+.Example-body {
+    padding: 1rem;
+}
+
+.Example-code {
+    margin-bottom: 0.5rem;
+}
+
+.Example-output {
+    background: #282c34;
+    color: #abb2bf;
+}
+
+.Example-outputLabel {
+    color: #6e7072;
+}
+
+/* Search */
+.Search-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.Search-count {
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+}
+
+.SearchResults {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.SearchResult {
+    padding: 1.25rem;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+}
+
+.SearchResult-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.SearchResult-title a {
+    font-family: var(--font-family-mono);
+}
+
+.SearchResult-synopsis {
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.SearchResult-meta {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+/* Empty State */
+.EmptyState {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-secondary);
+}
+
+/* Footer */
+.Footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    background: var(--color-background-secondary);
+    border-top: 1px solid var(--color-border);
+}
+
+.Footer-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.Footer-inner p {
+    margin: 0.25rem 0;
+}
+
+/* Responsive */
+@media (max-width: 64rem) {
+    .Package-body {
+        flex-direction: column;
+    }
+
+    .Package-nav {
+        width: 100%;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .Package-navInner {
+        position: static;
+        max-height: none;
+    }
+
+    .Index-list {
+        column-count: 1;
+    }
+}
+
+@media (max-width: 48rem) {
+    .Header-links {
+        display: none;
+    }
+
+    .Landing-title {
+        font-size: 2rem;
+    }
+
+    .Package-title {
+        font-size: 1.5rem;
+    }
+}

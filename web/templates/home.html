@@ -1,0 +1,38 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="Landing">
+        <h1 class="Landing-title">Go Packages</h1>
+        <p class="Landing-description">
+            Search for Go packages and browse their documentation.
+        </p>
+
+        {{if .Packages}}
+        <div class="PackageList">
+            <h2>Available Packages</h2>
+            <table class="PackageTable">
+                <thead>
+                    <tr>
+                        <th>Package</th>
+                        <th>Synopsis</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $path, $pkg := .Packages}}
+                    <tr>
+                        <td>
+                            <a href="/{{$pkg.ImportPath}}" class="PackageLink">{{$pkg.ImportPath}}</a>
+                        </td>
+                        <td class="PackageSynopsis">{{$pkg.Synopsis}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="EmptyState">
+            <p>No packages loaded. Add JSON documentation files to the data directory.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{template "footer" .}}

@@ -1,0 +1,134 @@
+// Main JavaScript for wikigo
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Prism syntax highlighting
+    if (typeof Prism !== 'undefined') {
+        Prism.highlightAll();
+    }
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href').slice(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                e.preventDefault();
+                const headerHeight = document.querySelector('.Header').offsetHeight;
+                const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+                // Update URL hash
+                history.pushState(null, null, '#' + targetId);
+            }
+        });
+    });
+
+    // Highlight current section in navigation
+    const navLinks = document.querySelectorAll('.Package-navList a');
+    const sections = [];
+
+    navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            const section = document.getElementById(href.slice(1));
+            if (section) {
+                sections.push({ link, section });
+            }
+        }
+    });
+
+    function updateActiveNav() {
+        const headerHeight = document.querySelector('.Header')?.offsetHeight || 0;
+        const scrollPos = window.scrollY + headerHeight + 50;
+
+        let currentSection = null;
+        sections.forEach(({ link, section }) => {
+            if (section.offsetTop <= scrollPos) {
+                currentSection = link;
+            }
+        });
+
+        navLinks.forEach(link => link.classList.remove('active'));
+        if (currentSection) {
+            currentSection.classList.add('active');
+        }
+    }
+
+    if (sections.length > 0) {
+        window.addEventListener('scroll', updateActiveNav, { passive: true });
+        updateActiveNav();
+    }
+
+    // Expand example on hash navigation
+    if (window.location.hash) {
+        const target = document.querySelector(window.location.hash);
+        if (target && target.tagName === 'DETAILS') {
+            target.open = true;
+        }
+    }
+
+    // Copy code button
+    document.querySelectorAll('pre code').forEach(block => {
+        const pre = block.parentElement;
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.textContent = 'Copy';
+        button.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(block.textContent);
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+    });
+
+    // Search form enhancement
+    const searchInput = document.querySelector('.SearchForm-input');
+    if (searchInput) {
+        // Keyboard shortcut: / to focus search
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
+    }
+});
+
+// Add copy button styles
+const style = document.createElement('style');
+style.textContent = `
+    .copy-button {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: #abb2bf;
+        background: #3e4451;
+        border: none;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    pre:hover .copy-button {
+        opacity: 1;
+    }
+    .copy-button:hover {
+        background: #4b5363;
+    }
+    .Package-navList a.active {
+        color: #007d9c;
+        font-weight: 500;
+    }
+`;
+document.head.appendChild(style);

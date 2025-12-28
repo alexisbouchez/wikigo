@@ -1,0 +1,321 @@
+{{template "header" .}}
+<div class="Package">
+    <div class="Package-header">
+        <div class="Package-breadcrumb">
+            {{$parts := split .Pkg.ImportPath "/"}}
+            {{range $i, $part := $parts}}
+                {{if $i}}<span class="Package-breadcrumbDivider">/</span>{{end}}
+                <span>{{$part}}</span>
+            {{end}}
+        </div>
+        <h1 class="Package-title">package {{.Pkg.Name}}</h1>
+        <div class="Package-badges">
+            <span class="Badge">{{.Pkg.ImportPath}}</span>
+        </div>
+    </div>
+
+    <div class="Package-body">
+        <nav class="Package-nav" id="nav">
+            <div class="Package-navInner">
+                <h2 class="Package-navTitle">Documentation</h2>
+                <ul class="Package-navList">
+                    <li><a href="#pkg-overview">Overview</a></li>
+                    <li><a href="#pkg-index">Index</a></li>
+                    {{if .Pkg.Examples}}
+                    <li><a href="#pkg-examples">Examples</a></li>
+                    {{end}}
+                </ul>
+
+                {{if or .Pkg.Constants .Pkg.Variables}}
+                <h3 class="Package-navSection">Constants and Variables</h3>
+                <ul class="Package-navList">
+                    {{if .Pkg.Constants}}<li><a href="#pkg-constants">Constants</a></li>{{end}}
+                    {{if .Pkg.Variables}}<li><a href="#pkg-variables">Variables</a></li>{{end}}
+                </ul>
+                {{end}}
+
+                {{if .Pkg.Functions}}
+                <h3 class="Package-navSection">Functions</h3>
+                <ul class="Package-navList">
+                    {{range .Pkg.Functions}}
+                    <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                    {{end}}
+                </ul>
+                {{end}}
+
+                {{if .Pkg.Types}}
+                <h3 class="Package-navSection">Types</h3>
+                <ul class="Package-navList">
+                    {{range .Pkg.Types}}
+                    {{$typeName := .Name}}
+                    <li>
+                        <a href="#{{.Name}}">type {{.Name}}</a>
+                        {{if or .Functions .Methods}}
+                        <ul class="Package-navSublist">
+                            {{range .Functions}}
+                            <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                            {{end}}
+                            {{range .Methods}}
+                            <li><a href="#{{$typeName}}.{{.Name}}">{{.Name}}</a></li>
+                            {{end}}
+                        </ul>
+                        {{end}}
+                    </li>
+                    {{end}}
+                </ul>
+                {{end}}
+            </div>
+        </nav>
+
+        <div class="Package-content">
+            <!-- Overview -->
+            <section class="Documentation" id="pkg-overview">
+                <h2 class="Documentation-title">Overview</h2>
+                <div class="Documentation-overview">
+                    {{formatDocHTML .Pkg.Doc}}
+                </div>
+            </section>
+
+            <!-- Index -->
+            <section class="Documentation" id="pkg-index">
+                <h2 class="Documentation-title">Index</h2>
+                <div class="Documentation-index">
+                    <ul class="Index-list">
+                        {{if .Pkg.Constants}}<li><a href="#pkg-constants">Constants</a></li>{{end}}
+                        {{if .Pkg.Variables}}<li><a href="#pkg-variables">Variables</a></li>{{end}}
+                        {{range .Pkg.Functions}}
+                        <li><a href="#{{.Name}}">func {{.Name}}</a></li>
+                        {{end}}
+                        {{range .Pkg.Types}}
+                        {{$typeName := .Name}}
+                        <li><a href="#{{.Name}}">type {{.Name}}</a></li>
+                        <ul class="Index-sublist">
+                            {{range .Functions}}
+                            <li><a href="#{{.Name}}">func {{.Name}}</a></li>
+                            {{end}}
+                            {{range .Methods}}
+                            <li><a href="#{{$typeName}}.{{.Name}}">func ({{.Recv}}) {{.Name}}</a></li>
+                            {{end}}
+                        </ul>
+                        {{end}}
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Examples -->
+            {{if .Pkg.Examples}}
+            <section class="Documentation" id="pkg-examples">
+                <h2 class="Documentation-title">Examples</h2>
+                <div class="Documentation-examples">
+                    <ul class="Examples-list">
+                        {{range .Pkg.Examples}}
+                        <li><a href="#example-{{anchorName .Name}}">{{if .Name}}{{.Name}}{{else}}Package{{end}}</a></li>
+                        {{end}}
+                    </ul>
+                </div>
+            </section>
+            {{end}}
+
+            <!-- Constants -->
+            {{if .Pkg.Constants}}
+            <section class="Documentation" id="pkg-constants">
+                <h2 class="Documentation-title">Constants</h2>
+                {{range .Pkg.Constants}}
+                <div class="Documentation-constant">
+                    {{if .Doc}}<p class="Documentation-doc">{{formatDoc .Doc}}</p>{{end}}
+                    <pre class="Documentation-code"><code class="language-go">{{.Decl}}</code></pre>
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+
+            <!-- Variables -->
+            {{if .Pkg.Variables}}
+            <section class="Documentation" id="pkg-variables">
+                <h2 class="Documentation-title">Variables</h2>
+                {{range .Pkg.Variables}}
+                <div class="Documentation-variable">
+                    {{if .Doc}}<p class="Documentation-doc">{{formatDoc .Doc}}</p>{{end}}
+                    <pre class="Documentation-code"><code class="language-go">{{.Decl}}</code></pre>
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+
+            <!-- Functions -->
+            {{if .Pkg.Functions}}
+            <section class="Documentation" id="pkg-functions">
+                <h2 class="Documentation-title">Functions</h2>
+                {{range .Pkg.Functions}}
+                <div class="Documentation-function" id="{{.Name}}">
+                    <h3 class="Documentation-functionHeader">
+                        <a href="#{{.Name}}" class="Documentation-idLink">func {{.Name}}</a>
+                        <a class="Documentation-source" href="{{sourceLink $.Pkg.ImportPath .Filename .Line}}" target="_blank">View Source</a>
+                    </h3>
+                    <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
+                    {{if .Doc}}
+                    <div class="Documentation-functionBody">
+                        {{formatDocHTML .Doc}}
+                    </div>
+                    {{end}}
+                    {{if .Examples}}
+                    <div class="Documentation-examples">
+                        {{range .Examples}}
+                        <details class="Example" id="example-{{anchorName .Name}}">
+                            <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
+                            <div class="Example-body">
+                                {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
+                                {{if .Output}}
+                                <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
+{{.Output}}</pre>
+                                {{end}}
+                            </div>
+                        </details>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+
+            <!-- Types -->
+            {{if .Pkg.Types}}
+            <section class="Documentation" id="pkg-types">
+                <h2 class="Documentation-title">Types</h2>
+                {{range .Pkg.Types}}
+                {{$typeName := .Name}}
+                <div class="Documentation-type" id="{{.Name}}">
+                    <h3 class="Documentation-typeHeader">
+                        <a href="#{{.Name}}" class="Documentation-idLink">type {{.Name}}</a>
+                        <a class="Documentation-source" href="{{sourceLink $.Pkg.ImportPath .Filename .Line}}" target="_blank">View Source</a>
+                    </h3>
+                    <pre class="Documentation-declaration"><code class="language-go">{{.Decl}}</code></pre>
+                    {{if .Doc}}
+                    <div class="Documentation-typeBody">
+                        {{formatDocHTML .Doc}}
+                    </div>
+                    {{end}}
+
+                    {{if .Examples}}
+                    <div class="Documentation-examples">
+                        {{range .Examples}}
+                        <details class="Example" id="example-{{$typeName}}-{{anchorName .Name}}">
+                            <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
+                            <div class="Example-body">
+                                {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
+                                {{if .Output}}
+                                <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
+{{.Output}}</pre>
+                                {{end}}
+                            </div>
+                        </details>
+                        {{end}}
+                    </div>
+                    {{end}}
+
+                    {{if .Constants}}
+                    <div class="Documentation-typeConstants">
+                        {{range .Constants}}
+                        <div class="Documentation-constant">
+                            {{if .Doc}}<p class="Documentation-doc">{{formatDoc .Doc}}</p>{{end}}
+                            <pre class="Documentation-code"><code class="language-go">{{.Decl}}</code></pre>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+
+                    {{if .Variables}}
+                    <div class="Documentation-typeVariables">
+                        {{range .Variables}}
+                        <div class="Documentation-variable">
+                            {{if .Doc}}<p class="Documentation-doc">{{formatDoc .Doc}}</p>{{end}}
+                            <pre class="Documentation-code"><code class="language-go">{{.Decl}}</code></pre>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+
+                    {{range .Functions}}
+                    <div class="Documentation-function" id="{{.Name}}">
+                        <h4 class="Documentation-functionHeader">
+                            <a href="#{{.Name}}" class="Documentation-idLink">func {{.Name}}</a>
+                        </h4>
+                        <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
+                        {{if .Doc}}
+                        <div class="Documentation-functionBody">
+                            {{formatDocHTML .Doc}}
+                        </div>
+                        {{end}}
+                        {{if .Examples}}
+                        <div class="Documentation-examples">
+                            {{range .Examples}}
+                            <details class="Example">
+                                <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
+                                <div class="Example-body">
+                                    {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                    <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
+                                    {{if .Output}}
+                                    <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
+{{.Output}}</pre>
+                                    {{end}}
+                                </div>
+                            </details>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+
+                    {{range .Methods}}
+                    <div class="Documentation-function" id="{{$typeName}}.{{.Name}}">
+                        <h4 class="Documentation-functionHeader">
+                            <a href="#{{$typeName}}.{{.Name}}" class="Documentation-idLink">func ({{.Recv}}) {{.Name}}</a>
+                        </h4>
+                        <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
+                        {{if .Doc}}
+                        <div class="Documentation-functionBody">
+                            {{formatDocHTML .Doc}}
+                        </div>
+                        {{end}}
+                        {{if .Examples}}
+                        <div class="Documentation-examples">
+                            {{range .Examples}}
+                            <details class="Example">
+                                <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
+                                <div class="Example-body">
+                                    {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                    <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
+                                    {{if .Output}}
+                                    <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
+{{.Output}}</pre>
+                                    {{end}}
+                                </div>
+                            </details>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+
+            <!-- Source Files -->
+            {{if .Pkg.Filenames}}
+            <section class="Documentation" id="pkg-sourcefiles">
+                <h2 class="Documentation-title">Source Files</h2>
+                <div class="Documentation-sourceFiles">
+                    {{range .Pkg.Filenames}}
+                    <a href="{{sourceLink $.Pkg.ImportPath (baseName .) 1}}" target="_blank">{{baseName .}}</a>
+                    {{end}}
+                </div>
+            </section>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{template "footer" .}}

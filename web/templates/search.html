@@ -1,0 +1,30 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="Search">
+        <h1 class="Search-title">Search Results for "{{.Query}}"</h1>
+
+        {{if .Results}}
+        <p class="Search-count">{{len .Results}} package{{if gt (len .Results) 1}}s{{end}} found</p>
+
+        <div class="SearchResults">
+            {{range .Results}}
+            <div class="SearchResult">
+                <h2 class="SearchResult-title">
+                    <a href="/{{.ImportPath}}">{{.ImportPath}}</a>
+                </h2>
+                <p class="SearchResult-synopsis">{{.Synopsis}}</p>
+                <div class="SearchResult-meta">
+                    <span class="SearchResult-package">package {{.Name}}</span>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="EmptyState">
+            <p>No packages found matching "{{.Query}}"</p>
+            <p>Try a different search term or <a href="/">browse all packages</a>.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{template "footer" .}}
