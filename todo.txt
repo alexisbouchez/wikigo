@@ -13,14 +13,14 @@
 - [x] Breadcrumb navigation (Discover Packages > Standard library > net > http)
 - [ ] Collapsible "Jump To" sidebar sections
 - [ ] Mobile-responsive hamburger menu
-- [ ] Sticky sidebar that scrolls with content
+- [x] Sticky sidebar that scrolls with content
 
 ### Examples Section
 - [ ] Dedicated Examples section in index
 - [ ] Example code with "Share" button
 - [ ] Example code with "Format" button
 - [ ] Example code with "Run" button (Go Playground integration)
-- [ ] Expandable/collapsible example blocks
+- [x] Expandable/collapsible example blocks
 
 ### Source Files Section
 - [x] List all source files in package
@@ -75,7 +75,7 @@
 ### Performance & Polish
 - [ ] Lazy loading for large packages
 - [ ] Anchor link highlight animation
-- [ ] Smooth scroll behavior
+- [x] Smooth scroll behavior
 - [ ] Print-friendly stylesheet
 - [ ] SEO meta tags (og:image, description, etc.)
 
