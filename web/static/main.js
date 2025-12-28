@@ -294,9 +294,10 @@ document.addEventListener('DOMContentLoaded', function() {
         pre.appendChild(button);
     });
 
-    // Search form enhancement
+    // Search form enhancement with autocomplete
     const searchInput = document.querySelector('.SearchForm-input');
     if (searchInput) {
+        initSearchAutocomplete(searchInput);
         document.addEventListener('keydown', (e) => {
             // / to focus search
             if (e.key === '/' && !isInputFocused()) {
@@ -306,10 +307,98 @@ document.addEventListener('DOMContentLoaded', function() {
             // Escape to blur search
             if (e.key === 'Escape' && document.activeElement === searchInput) {
                 searchInput.blur();
+                hideAutocomplete();
             }
         });
     }
 });
+
+// Search autocomplete
+let autocompleteTimeout = null;
+let autocompleteContainer = null;
+
+function initSearchAutocomplete(input) {
+    // Create autocomplete container
+    autocompleteContainer = document.createElement('div');
+    autocompleteContainer.className = 'SearchAutocomplete';
+    input.parentElement.style.position = 'relative';
+    input.parentElement.appendChild(autocompleteContainer);
+
+    let selectedIndex = -1;
+
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        if (query.length < 2) {
+            hideAutocomplete();
+            return;
+        }
+
+        clearTimeout(autocompleteTimeout);
+        autocompleteTimeout = setTimeout(() => fetchSuggestions(query), 200);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const items = autocompleteContainer.querySelectorAll('.SearchAutocomplete-item');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            updateSelection(items, selectedIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateSelection(items, selectedIndex);
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+            e.preventDefault();
+            const link = items[selectedIndex].querySelector('a');
+            if (link) window.location.href = link.href;
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(hideAutocomplete, 150);
+    });
+}
+
+function fetchSuggestions(query) {
+    fetch('/api/search?q=' + encodeURIComponent(query))
+        .then(res => res.json())
+        .then(results => {
+            if (!results || results.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+            showAutocomplete(results.slice(0, 8));
+        })
+        .catch(() => hideAutocomplete());
+}
+
+function showAutocomplete(results) {
+    if (!autocompleteContainer) return;
+    autocompleteContainer.innerHTML = results.map(pkg => `
+        <div class="SearchAutocomplete-item">
+            <a href="/${pkg.import_path}">
+                <span class="SearchAutocomplete-path">${pkg.import_path}</span>
+                <span class="SearchAutocomplete-synopsis">${pkg.synopsis || ''}</span>
+            </a>
+        </div>
+    `).join('');
+    autocompleteContainer.style.display = 'block';
+}
+
+function hideAutocomplete() {
+    if (autocompleteContainer) {
+        autocompleteContainer.style.display = 'none';
+        autocompleteContainer.innerHTML = '';
+    }
+}
+
+function updateSelection(items, index) {
+    items.forEach((item, i) => {
+        item.classList.toggle('selected', i === index);
+    });
+}
 
 function isInputFocused() {
     const tag = document.activeElement?.tagName;
@@ -478,6 +567,51 @@ style.textContent = `
         background: var(--color-brand);
         color: #fff;
         border-color: var(--color-brand);
+    }
+    .SearchAutocomplete {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--color-background);
+        border: 1px solid var(--color-border);
+        border-radius: 0.25rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .SearchAutocomplete-item {
+        border-bottom: 1px solid var(--color-border);
+    }
+    .SearchAutocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .SearchAutocomplete-item a {
+        display: block;
+        padding: 0.75rem 1rem;
+        text-decoration: none;
+        color: var(--color-text);
+    }
+    .SearchAutocomplete-item:hover,
+    .SearchAutocomplete-item.selected {
+        background: var(--color-background-secondary);
+    }
+    .SearchAutocomplete-path {
+        display: block;
+        font-family: var(--font-family-mono);
+        font-size: 0.875rem;
+        color: var(--color-link);
+    }
+    .SearchAutocomplete-synopsis {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        margin-top: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 `;
 document.head.appendChild(style);

@@ -61,7 +61,7 @@
 
 ### Search Enhancements
 - [x] Search within package (symbols, docs)
-- [ ] Search suggestions/autocomplete
+- [x] Search suggestions/autocomplete
 - [x] Filter by type (functions, types, methods)
 - [x] Search result highlighting
 
