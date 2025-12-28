@@ -18,7 +18,7 @@
 ### Examples Section
 - [x] Dedicated Examples section in index
 - [x] Example code with "Share" button
-- [ ] Example code with "Format" button
+- [x] Example code with "Format" button
 - [x] Example code with "Run" button (Go Playground integration)
 - [x] Expandable/collapsible example blocks
 

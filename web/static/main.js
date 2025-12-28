@@ -63,6 +63,57 @@ function runInPlayground(btn) {
     });
 }
 
+function formatExample(btn) {
+    const exampleBody = btn.closest('.Example-body');
+    const codeBlock = exampleBody.querySelector('.Example-code code');
+    if (!codeBlock) return;
+
+    const originalText = btn.textContent;
+    btn.textContent = 'Formatting...';
+    btn.disabled = true;
+
+    let code = codeBlock.textContent;
+
+    // Wrap in package if needed for formatting
+    let wrapped = false;
+    if (!code.includes('package ')) {
+        code = 'package main\n\nfunc example() {\n' + code + '\n}';
+        wrapped = true;
+    }
+
+    fetch('https://go.dev/_/fmt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'body=' + encodeURIComponent(code),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.Body) {
+            let formatted = data.Body;
+            // Unwrap if we wrapped it
+            if (wrapped) {
+                const match = formatted.match(/func example\(\) \{\n([\s\S]*)\n\}$/);
+                if (match) {
+                    formatted = match[1].split('\n').map(line =>
+                        line.startsWith('\t') ? line.slice(1) : line
+                    ).join('\n');
+                }
+            }
+            codeBlock.textContent = formatted;
+            if (typeof Prism !== 'undefined') {
+                Prism.highlightElement(codeBlock);
+            }
+        } else if (data.Error) {
+            console.error('Format error:', data.Error);
+        }
+    })
+    .catch(err => console.error('Format failed:', err))
+    .finally(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    });
+}
+
 function shareExample(btn) {
     const example = btn.closest('.Example');
     const id = example ? example.id : null;

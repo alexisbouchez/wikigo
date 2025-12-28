@@ -837,6 +837,7 @@ code {
     background: #006880;
 }
 
+.Example-format,
 .Example-share {
     display: inline-flex;
     align-items: center;
@@ -851,6 +852,7 @@ code {
     cursor: pointer;
 }
 
+.Example-format:hover,
 .Example-share:hover {
     background: var(--color-background-secondary);
 }
