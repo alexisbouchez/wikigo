@@ -22,6 +22,13 @@ const (
 	NPMSearchURL   = "https://registry.npmjs.org/-/v1/search"
 )
 
+// cleanRepoURL normalizes git repository URLs for web display
+func cleanRepoURL(url string) string {
+	url = strings.TrimPrefix(url, "git+")
+	url = strings.TrimSuffix(url, ".git")
+	return url
+}
+
 // NPMPackage represents npm package metadata
 type NPMPackage struct {
 	Name        string            `json:"name"`
@@ -266,7 +273,7 @@ func (c *NPMCrawler) IndexPackage(name string) error {
 			Description:   pkg.Description,
 			Author:        pkg.Author.Name,
 			License:       pkg.License,
-			RepositoryURL: pkg.Repository.URL,
+			RepositoryURL: cleanRepoURL(pkg.Repository.URL),
 			Homepage:      pkg.Homepage,
 			NPMURL:        fmt.Sprintf("https://www.npmjs.com/package/%s", pkg.Name),
 			MainFile:      pkg.Main,
