@@ -199,11 +199,12 @@
 ## JavaScript/TypeScript Support
 
 ### Core Infrastructure
-- [ ] Add JavaScript/TypeScript parser integration
-  - Evaluate parser options (esprima, @babel/parser, typescript compiler API)
-  - Parse JS/TS files into AST
-  - Extract JSDoc comments
-  - Handle ES modules, CommonJS, TypeScript modules
+- [x] Add JavaScript/TypeScript parser integration
+  - Evaluated parser options (chose esbuild - Go-based, fast, full TS support)
+  - Parse JS/TS files with esbuild (jsparser/parser.go)
+  - Extract exported symbols (functions, classes, interfaces, types, enums)
+  - Handle ES modules, TypeScript syntax
+  - Tests passing (jsparser/parser_test.go)
 
 ### Symbol Extraction
 - [ ] Extract JavaScript symbols
