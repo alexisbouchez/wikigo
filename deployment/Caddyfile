@@ -1,0 +1,60 @@
+# wikigo Caddyfile
+# Caddy reverse proxy configuration for wikigo
+
+# Replace with your domain
+your-domain.com {
+    # Enable automatic HTTPS
+    # Caddy will automatically obtain and renew SSL certificates via Let's Encrypt
+
+    # Reverse proxy to wikigo server
+    reverse_proxy localhost:8080
+
+    # Enable compression
+    encode gzip zstd
+
+    # Custom headers for security
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+        # Prevent clickjacking
+        X-Frame-Options "SAMEORIGIN"
+
+        # Prevent MIME sniffing
+        X-Content-Type-Options "nosniff"
+
+        # Enable XSS protection
+        X-XSS-Protection "1; mode=block"
+
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/wikigo-access.log
+        format json
+    }
+
+    # Handle large package documentation
+    request_body {
+        max_size 10MB
+    }
+}
+
+# Optional: Redirect www to non-www
+www.your-domain.com {
+    redir https://your-domain.com{uri} permanent
+}
+
+# Optional: Development/staging subdomain
+dev.your-domain.com {
+    reverse_proxy localhost:8081
+
+    # Basic auth for development site
+    basicauth {
+        # Username: admin, Password: change_this_password
+        # Generate with: caddy hash-password
+        admin JDJhJDE0JE5WNi5NVXk1OGxLRVlKSDJiMFdEWk8uV3VUdEtxRmRBVXVMQUJJcUZFaFN0b2JaRVFkMndT
+    }
+}

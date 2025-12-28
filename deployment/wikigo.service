@@ -1,0 +1,46 @@
+[Unit]
+Description=wikigo - Multi-language Documentation Viewer
+Documentation=https://github.com/alexisbouchez/wikigo
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Change these to match your setup
+User=wikigo
+Group=wikigo
+WorkingDirectory=/opt/wikigo
+
+# Path to the wikigo binary
+ExecStart=/usr/local/bin/wikigo-serve -db /var/lib/wikigo/wikigo.db -addr :8080
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wikigo
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+
+# Environment variables (optional)
+# Uncomment and set if using AI features
+#Environment="MISTRAL_API_KEY=your-api-key-here"
+
+# Uncomment and set if using GitHub crawler
+#Environment="GITHUB_TOKEN=your-github-token-here"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wikigo
+
+[Install]
+WantedBy=multi-user.target
