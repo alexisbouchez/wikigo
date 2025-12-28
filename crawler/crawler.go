@@ -133,7 +133,68 @@ func (c *Crawler) Run(ctx context.Context, since time.Time) error {
 	// Print final stats
 	c.printStats()
 
+	// Save crawl time to database
+	if err := c.db.SetLastCrawlTime(time.Now()); err != nil {
+		log.Printf("Warning: failed to save crawl time: %v", err)
+	}
+
 	return nil
+}
+
+// RunWithSchedule runs the crawler on a schedule
+func (c *Crawler) RunWithSchedule(ctx context.Context, interval time.Duration) error {
+	log.Printf("Starting scheduled crawler with interval %v", interval)
+
+	// Run immediately on startup
+	if err := c.runIncrementalCrawl(ctx); err != nil {
+		if err == context.Canceled {
+			return nil
+		}
+		log.Printf("Initial crawl failed: %v", err)
+	}
+
+	// Create ticker for scheduled runs
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Scheduler stopped")
+			return nil
+		case <-ticker.C:
+			log.Printf("Starting scheduled crawl at %s", time.Now().Format(time.RFC3339))
+			if err := c.runIncrementalCrawl(ctx); err != nil {
+				if err == context.Canceled {
+					return nil
+				}
+				log.Printf("Scheduled crawl failed: %v", err)
+			}
+		}
+	}
+}
+
+// runIncrementalCrawl runs a crawl using the last crawl time from the database
+func (c *Crawler) runIncrementalCrawl(ctx context.Context) error {
+	// Get last crawl time from database
+	since, err := c.db.GetLastCrawlTime()
+	if err != nil {
+		log.Printf("Warning: failed to get last crawl time: %v", err)
+		// Continue with full crawl
+	}
+
+	if since.IsZero() {
+		log.Println("No previous crawl found, starting full crawl")
+	} else {
+		log.Printf("Incremental crawl since %s", since.Format(time.RFC3339))
+	}
+
+	return c.Run(ctx, since)
+}
+
+// GetDB returns the database connection (for external access)
+func (c *Crawler) GetDB() *db.DB {
+	return c.db
 }
 
 // fetchIndex fetches the module index from index.golang.org

@@ -94,7 +94,7 @@
 - [x] Parse and store package documentation (SQLite database)
 - [x] Track import relationships (imports table)
 - [ ] Version history tracking
-- [ ] Periodic re-indexing for updates
+- [x] Periodic re-indexing for updates
 
 ### API
 - [x] JSON API for package metadata

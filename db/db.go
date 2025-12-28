@@ -199,6 +199,13 @@ func (db *DB) migrate() error {
 			INSERT INTO symbols_fts(docid, name, synopsis)
 			VALUES (new.id, new.name, new.synopsis);
 		END`,
+
+		// Metadata table for crawl state tracking
+		`CREATE TABLE IF NOT EXISTS crawl_metadata (
+			key TEXT PRIMARY KEY,
+			value TEXT,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	for _, migration := range migrations {
@@ -555,4 +562,62 @@ func (db *DB) DeletePackage(importPath string) error {
 	}
 
 	return tx.Commit()
+}
+
+// GetLastCrawlTime returns the last successful crawl time
+func (db *DB) GetLastCrawlTime() (time.Time, error) {
+	var value sql.NullString
+	err := db.conn.QueryRow(`
+		SELECT value FROM crawl_metadata WHERE key = 'last_crawl_time'
+	`).Scan(&value)
+
+	if err == sql.ErrNoRows || !value.Valid {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Parse(time.RFC3339, value.String)
+}
+
+// SetLastCrawlTime sets the last successful crawl time
+func (db *DB) SetLastCrawlTime(t time.Time) error {
+	_, err := db.conn.Exec(`
+		INSERT INTO crawl_metadata (key, value, updated_at)
+		VALUES ('last_crawl_time', ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
+			updated_at = CURRENT_TIMESTAMP
+	`, t.Format(time.RFC3339))
+	return err
+}
+
+// GetMetadata retrieves a metadata value by key
+func (db *DB) GetMetadata(key string) (string, error) {
+	var value sql.NullString
+	err := db.conn.QueryRow(`
+		SELECT value FROM crawl_metadata WHERE key = ?
+	`, key).Scan(&value)
+
+	if err == sql.ErrNoRows || !value.Valid {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return value.String, nil
+}
+
+// SetMetadata sets a metadata value
+func (db *DB) SetMetadata(key, value string) error {
+	_, err := db.conn.Exec(`
+		INSERT INTO crawl_metadata (key, value, updated_at)
+		VALUES (?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
+			updated_at = CURRENT_TIMESTAMP
+	`, key, value)
+	return err
 }

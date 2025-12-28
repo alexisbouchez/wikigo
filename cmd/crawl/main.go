@@ -19,6 +19,8 @@ func main() {
 	sinceStr := flag.String("since", "", "Only fetch modules updated since this time (RFC3339 format)")
 	maxModules := flag.Int("max", 0, "Maximum number of modules to process (0 = unlimited)")
 	tempDir := flag.String("temp", "", "Temporary directory for downloads (default: system temp)")
+	daemon := flag.Bool("daemon", false, "Run in daemon mode with periodic re-indexing")
+	interval := flag.Duration("interval", 1*time.Hour, "Re-indexing interval in daemon mode")
 	flag.Parse()
 
 	var since time.Time
@@ -65,6 +67,11 @@ func main() {
 	fmt.Printf("Database: %s\n", *dbPath)
 	fmt.Printf("Workers: %d\n", *workers)
 	fmt.Printf("Rate limit: %v\n", *rateLimit)
+	if *daemon {
+		fmt.Printf("Mode: daemon (interval: %v)\n", *interval)
+	} else {
+		fmt.Printf("Mode: one-shot\n")
+	}
 	if !since.IsZero() {
 		fmt.Printf("Since: %s\n", since.Format(time.RFC3339))
 	}
@@ -73,12 +80,25 @@ func main() {
 	}
 	fmt.Println()
 
-	if err := c.Run(ctx, since); err != nil {
-		if err == context.Canceled {
-			fmt.Println("Crawl cancelled")
-		} else {
-			fmt.Fprintf(os.Stderr, "Error running crawler: %v\n", err)
-			os.Exit(1)
+	if *daemon {
+		// Run in daemon mode with scheduled re-indexing
+		if err := c.RunWithSchedule(ctx, *interval); err != nil {
+			if err == context.Canceled {
+				fmt.Println("Daemon stopped")
+			} else {
+				fmt.Fprintf(os.Stderr, "Error running daemon: %v\n", err)
+				os.Exit(1)
+			}
+		}
+	} else {
+		// Run one-shot crawl
+		if err := c.Run(ctx, since); err != nil {
+			if err == context.Canceled {
+				fmt.Println("Crawl cancelled")
+			} else {
+				fmt.Fprintf(os.Stderr, "Error running crawler: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	}
 }
