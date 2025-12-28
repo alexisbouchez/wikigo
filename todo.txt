@@ -27,8 +27,8 @@
 - [x] Link each file to source browser with line count
 
 ### Directories Section
-- [ ] Show subpackages/subdirectories
-- [ ] Synopsis for each subdirectory
+- [x] Show subpackages/subdirectories
+- [x] Synopsis for each subdirectory
 
 ## Medium Priority
 

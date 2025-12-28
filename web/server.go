@@ -34,6 +34,13 @@ type PackageDoc struct {
 	Filenames  []string   `json:"filenames"`
 }
 
+// Subdirectory represents a child package
+type Subdirectory struct {
+	Name     string
+	Path     string
+	Synopsis string
+}
+
 // Constant represents a documented constant
 type Constant struct {
 	Names []string `json:"names"`
@@ -221,16 +228,41 @@ func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getSubdirectories returns subdirectories for a package
+func (s *Server) getSubdirectories(importPath string) []Subdirectory {
+	var subdirs []Subdirectory
+	prefix := importPath + "/"
+
+	for path, pkg := range s.packages {
+		if strings.HasPrefix(path, prefix) {
+			rest := strings.TrimPrefix(path, prefix)
+			// Only include direct children (no further slashes)
+			if !strings.Contains(rest, "/") {
+				subdirs = append(subdirs, Subdirectory{
+					Name:     rest,
+					Path:     path,
+					Synopsis: pkg.Synopsis,
+				})
+			}
+		}
+	}
+	return subdirs
+}
+
 // renderPackage renders a package documentation page
 func (s *Server) renderPackage(w http.ResponseWriter, r *http.Request, pkg *PackageDoc) {
+	subdirs := s.getSubdirectories(pkg.ImportPath)
+
 	data := struct {
-		Title       string
-		SearchQuery string
-		Pkg         *PackageDoc
+		Title          string
+		SearchQuery    string
+		Pkg            *PackageDoc
+		Subdirectories []Subdirectory
 	}{
-		Title:       pkg.Name + " package - " + pkg.ImportPath + " - Go Packages",
-		SearchQuery: "",
-		Pkg:         pkg,
+		Title:          pkg.Name + " package - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery:    "",
+		Pkg:            pkg,
+		Subdirectories: subdirs,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "package.html", data); err != nil {

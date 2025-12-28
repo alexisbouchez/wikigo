@@ -329,6 +329,29 @@
                 </div>
             </section>
             {{end}}
+
+            <!-- Directories -->
+            {{if .Subdirectories}}
+            <section class="Documentation" id="pkg-directories">
+                <h2 class="Documentation-title">Directories</h2>
+                <table class="DirectoryTable">
+                    <thead>
+                        <tr>
+                            <th>Path</th>
+                            <th>Synopsis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Subdirectories}}
+                        <tr>
+                            <td><a href="/{{.Path}}" class="DirectoryLink">{{.Name}}</a></td>
+                            <td class="DirectorySynopsis">{{.Synopsis}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </section>
+            {{end}}
         </div>
     </div>
 </div>
