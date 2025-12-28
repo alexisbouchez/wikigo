@@ -837,6 +837,24 @@ code {
     background: #006880;
 }
 
+.Example-share {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.Example-share:hover {
+    background: var(--color-background-secondary);
+}
+
 /* Search */
 .Search-title {
     font-size: 1.75rem;

@@ -63,6 +63,24 @@ function runInPlayground(btn) {
     });
 }
 
+function shareExample(btn) {
+    const example = btn.closest('.Example');
+    const id = example ? example.id : null;
+
+    let url = window.location.href.split('#')[0];
+    if (id) {
+        url += '#' + id;
+    }
+
+    navigator.clipboard.writeText(url).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 1500);
+    });
+}
+
 function showImports() {
     const popup = document.getElementById('importsPopup');
     if (popup) popup.classList.add('open');
