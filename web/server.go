@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/alexisbouchez/wikigo/db"
 )
 
 //go:embed templates/*.html
@@ -110,13 +112,29 @@ type Server struct {
 	packages  map[string]*PackageDoc
 	templates *template.Template
 	dataDir   string
+	db        *db.DB // optional database for indexing
 }
 
 // NewServer creates a new documentation server
 func NewServer(dataDir string) (*Server, error) {
+	return NewServerWithDB(dataDir, "")
+}
+
+// NewServerWithDB creates a new documentation server with optional SQLite database
+func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 	s := &Server{
 		packages: make(map[string]*PackageDoc),
 		dataDir:  dataDir,
+	}
+
+	// Open database if path provided
+	if dbPath != "" {
+		database, err := db.Open(dbPath)
+		if err != nil {
+			return nil, fmt.Errorf("opening database: %w", err)
+		}
+		s.db = database
+		log.Printf("Opened database: %s", dbPath)
 	}
 
 	// Parse templates
@@ -151,6 +169,185 @@ func NewServer(dataDir string) (*Server, error) {
 	return s, nil
 }
 
+// Close closes the server and its resources
+func (s *Server) Close() error {
+	if s.db != nil {
+		return s.db.Close()
+	}
+	return nil
+}
+
+// IndexPackage indexes a package into the database
+func (s *Server) IndexPackage(pkg *PackageDoc) error {
+	if s.db == nil {
+		return fmt.Errorf("database not configured")
+	}
+
+	// Convert PackageDoc to JSON for storage
+	docJSON, err := json.Marshal(pkg)
+	if err != nil {
+		return fmt.Errorf("marshaling package: %w", err)
+	}
+
+	// Create database package
+	dbPkg := &db.Package{
+		ImportPath:      pkg.ImportPath,
+		Name:            pkg.Name,
+		Synopsis:        pkg.Synopsis,
+		Doc:             pkg.Doc,
+		Version:         pkg.Version,
+		Versions:        pkg.Versions,
+		IsTagged:        pkg.IsTagged,
+		IsStable:        pkg.IsStable,
+		License:         pkg.License,
+		LicenseText:     pkg.LicenseText,
+		Redistributable: pkg.Redistributable,
+		Repository:      pkg.Repository,
+		HasValidMod:     pkg.HasValidMod,
+		GoVersion:       pkg.GoVersion,
+		ModulePath:      pkg.ModulePath,
+		GoModContent:    pkg.GoModContent,
+		GOOS:            pkg.GOOS,
+		GOARCH:          pkg.GOARCH,
+		DocJSON:         string(docJSON),
+	}
+
+	// Upsert package
+	pkgID, err := s.db.UpsertPackage(dbPkg)
+	if err != nil {
+		return fmt.Errorf("upserting package: %w", err)
+	}
+
+	// Delete old symbols
+	if err := s.db.DeletePackageSymbols(pkgID); err != nil {
+		return fmt.Errorf("deleting old symbols: %w", err)
+	}
+
+	// Index symbols
+	for _, fn := range pkg.Functions {
+		sym := &db.Symbol{
+			Name:       fn.Name,
+			Kind:       "func",
+			PackageID:  pkgID,
+			ImportPath: pkg.ImportPath,
+			Synopsis:   shortDoc(fn.Doc),
+			Deprecated: fn.Deprecated,
+		}
+		if err := s.db.UpsertSymbol(sym); err != nil {
+			log.Printf("Warning: failed to index symbol %s: %v", fn.Name, err)
+		}
+	}
+
+	for _, t := range pkg.Types {
+		// Index type
+		sym := &db.Symbol{
+			Name:       t.Name,
+			Kind:       "type",
+			PackageID:  pkgID,
+			ImportPath: pkg.ImportPath,
+			Synopsis:   shortDoc(t.Doc),
+			Deprecated: t.Deprecated,
+		}
+		if err := s.db.UpsertSymbol(sym); err != nil {
+			log.Printf("Warning: failed to index type %s: %v", t.Name, err)
+		}
+
+		// Index methods
+		for _, m := range t.Methods {
+			sym := &db.Symbol{
+				Name:       t.Name + "." + m.Name,
+				Kind:       "method",
+				PackageID:  pkgID,
+				ImportPath: pkg.ImportPath,
+				Synopsis:   shortDoc(m.Doc),
+				Deprecated: m.Deprecated,
+			}
+			if err := s.db.UpsertSymbol(sym); err != nil {
+				log.Printf("Warning: failed to index method %s: %v", m.Name, err)
+			}
+		}
+
+		// Index type functions (constructors)
+		for _, fn := range t.Functions {
+			sym := &db.Symbol{
+				Name:       fn.Name,
+				Kind:       "func",
+				PackageID:  pkgID,
+				ImportPath: pkg.ImportPath,
+				Synopsis:   shortDoc(fn.Doc),
+				Deprecated: fn.Deprecated,
+			}
+			if err := s.db.UpsertSymbol(sym); err != nil {
+				log.Printf("Warning: failed to index func %s: %v", fn.Name, err)
+			}
+		}
+	}
+
+	// Index constants
+	for _, c := range pkg.Constants {
+		for _, name := range c.Names {
+			sym := &db.Symbol{
+				Name:       name,
+				Kind:       "const",
+				PackageID:  pkgID,
+				ImportPath: pkg.ImportPath,
+				Synopsis:   shortDoc(c.Doc),
+			}
+			if err := s.db.UpsertSymbol(sym); err != nil {
+				log.Printf("Warning: failed to index const %s: %v", name, err)
+			}
+		}
+	}
+
+	// Index variables
+	for _, v := range pkg.Variables {
+		for _, name := range v.Names {
+			sym := &db.Symbol{
+				Name:       name,
+				Kind:       "var",
+				PackageID:  pkgID,
+				ImportPath: pkg.ImportPath,
+				Synopsis:   shortDoc(v.Doc),
+			}
+			if err := s.db.UpsertSymbol(sym); err != nil {
+				log.Printf("Warning: failed to index var %s: %v", name, err)
+			}
+		}
+	}
+
+	// Index imports
+	for _, imp := range pkg.Imports {
+		if err := s.db.AddImport(pkg.ImportPath, imp, pkg.ModulePath); err != nil {
+			log.Printf("Warning: failed to index import %s: %v", imp, err)
+		}
+	}
+
+	log.Printf("Indexed package: %s", pkg.ImportPath)
+	return nil
+}
+
+// GetImportedByCount returns the count of packages that import the given package
+func (s *Server) GetImportedByCount(importPath string) int {
+	if s.db == nil {
+		return 0
+	}
+	count, err := s.db.GetImportedByCount(importPath)
+	if err != nil {
+		log.Printf("Error getting imported by count: %v", err)
+		return 0
+	}
+	return count
+}
+
+// GetDBStats returns database statistics
+func (s *Server) GetDBStats() (packageCount, symbolCount, importCount int) {
+	if s.db == nil {
+		return len(s.packages), 0, 0
+	}
+	packageCount, symbolCount, importCount, _ = s.db.GetStats()
+	return
+}
+
 // loadPackages loads all package documentation from JSON files
 func (s *Server) loadPackages() error {
 	return filepath.Walk(s.dataDir, func(path string, info os.FileInfo, err error) error {
@@ -175,6 +372,14 @@ func (s *Server) loadPackages() error {
 
 		s.packages[pkg.ImportPath] = &pkg
 		log.Printf("Loaded package: %s", pkg.ImportPath)
+
+		// Index into database if available
+		if s.db != nil {
+			if err := s.IndexPackage(&pkg); err != nil {
+				log.Printf("Warning: could not index %s: %v", pkg.ImportPath, err)
+			}
+		}
+
 		return nil
 	})
 }
