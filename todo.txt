@@ -195,3 +195,147 @@
 - [ ] A/B testing framework
   - Compare AI-generated vs manual docs
   - Measure user engagement/satisfaction
+
+## JavaScript/TypeScript Support
+
+### Core Infrastructure
+- [ ] Add JavaScript/TypeScript parser integration
+  - Evaluate parser options (esprima, @babel/parser, typescript compiler API)
+  - Parse JS/TS files into AST
+  - Extract JSDoc comments
+  - Handle ES modules, CommonJS, TypeScript modules
+
+### Symbol Extraction
+- [ ] Extract JavaScript symbols
+  - Functions (named, arrow, async)
+  - Classes and methods
+  - Constants and variables (const, let, var)
+  - Exported symbols (export, module.exports)
+- [ ] Extract TypeScript symbols
+  - Interfaces and type aliases
+  - Enums
+  - Decorators
+  - Generics
+  - Type parameters
+
+### Documentation Parsing
+- [ ] Parse JSDoc comments
+  - @param, @returns, @throws
+  - @example, @deprecated
+  - @see, @link references
+  - Type annotations in JSDoc
+- [ ] Parse TypeScript inline types
+  - Function signatures with types
+  - Interface definitions
+  - Type aliases
+  - Union/intersection types
+
+### NPM Package Support
+- [ ] Crawl npm registry
+  - Fetch package metadata from registry.npmjs.org
+  - Download and extract package tarballs
+  - Parse package.json (dependencies, scripts, etc.)
+  - Handle scoped packages (@org/package)
+- [ ] Version tracking
+  - Latest, next, beta tags
+  - Semver version resolution
+  - Deprecation notices
+  - Security advisories
+
+### Database Schema
+- [ ] Extend database for JS/TS packages
+  - New table: js_packages (name, version, description, author, license)
+  - New table: js_symbols (name, kind, signature, file_path, line)
+  - Store package.json metadata
+  - Store TypeScript type definitions
+- [ ] Index JS/TS symbols for search
+  - FTS index on symbol names and descriptions
+  - Type-aware search (filter by function/class/interface)
+  - Cross-reference imports
+
+### Web UI
+- [ ] Package page for JS/TS packages
+  - Display README.md
+  - Show API documentation
+  - List exports (functions, classes, types)
+  - Syntax highlighting for JavaScript/TypeScript
+- [ ] Symbol browser
+  - Navigate classes and methods
+  - View type definitions
+  - Click-through type references
+  - Show inheritance hierarchy
+- [ ] Search integration
+  - Search npm packages by name
+  - Search symbols within packages
+  - Filter by language (Go vs JS/TS)
+
+### Type System Integration
+- [ ] TypeScript type resolution
+  - Resolve imported types
+  - Display inferred types
+  - Show type aliases expansion
+  - Handle generic type parameters
+- [ ] Type documentation
+  - Generate type signature strings
+  - Format complex types readably
+  - Link to type definitions
+  - Show type compatibility
+
+### AI Enhancements for JS/TS
+- [ ] Auto-generate JSDoc comments
+  - Detect uncommented functions/classes
+  - Generate @param and @returns
+  - Infer types from TypeScript
+- [ ] TypeScript type generation
+  - Generate .d.ts for JavaScript files
+  - Suggest type improvements
+  - Detect type errors
+- [ ] Code explanation
+  - Explain JavaScript closures, async/await
+  - Explain TypeScript advanced types
+  - Explain React components, hooks
+
+### Build Tool Integration
+- [ ] Support common bundlers
+  - Webpack configuration parsing
+  - Vite config
+  - Rollup config
+  - Detect entry points
+- [ ] Monorepo support
+  - Detect Lerna/Nx workspaces
+  - Parse workspace packages
+  - Show dependency graph
+
+### Testing
+- [ ] JS/TS parser tests
+  - Test various JavaScript syntax versions (ES5, ES6, ES2020+)
+  - Test TypeScript syntax (interfaces, generics, decorators)
+  - Test JSDoc parsing
+- [ ] NPM crawler tests
+  - Test package fetching
+  - Test version resolution
+  - Test scoped packages
+- [ ] Integration tests
+  - Full pipeline: crawl → parse → index → display
+  - Test with real npm packages (express, react, typescript)
+
+### Performance
+- [ ] Lazy loading for large packages
+  - Stream parsing for huge files
+  - Paginate symbol lists
+  - Background indexing
+- [ ] Caching
+  - Cache parsed ASTs
+  - Cache type resolution results
+  - Cache npm registry responses
+
+### Future Enhancements
+- [ ] Framework-specific support
+  - React components and hooks
+  - Vue.js components
+  - Angular modules and services
+  - Express.js routes
+- [ ] Interactive playground
+  - CodeSandbox/StackBlitz integration
+  - Run examples in browser
+  - Edit and fork examples
