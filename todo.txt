@@ -140,10 +140,11 @@
 - [x] Caching layer for AI-generated content
 
 #### Documentation Generation
-- [ ] Auto-generate missing function/method comments
-  - Detect uncommented exported functions
-  - Generate concise doc comments from function signature + body
-  - Store generated comments separately (don't modify source)
+- [x] Auto-generate missing function/method comments
+  - Detect uncommented exported functions (ai/docgen.go)
+  - Generate concise doc comments from function signature + body (ai/service.go)
+  - Store generated comments separately (db.go ai_docs table, cmd/gendocs)
+  - Display AI-generated docs in web UI with visual badge
 - [ ] Auto-generate missing package synopsis
   - For packages without synopsis
   - Use package name + exported symbols to generate

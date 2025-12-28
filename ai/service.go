@@ -229,3 +229,31 @@ func (s *Service) SetBudget(maxDailyUSD, maxMonthlyUSD float64) {
 	s.budget.MaxDailyUSD = maxDailyUSD
 	s.budget.MaxMonthlyUSD = maxMonthlyUSD
 }
+
+// GenerateMethodComment generates a comment for an uncommented method
+func (s *Service) GenerateMethodComment(receiverType, methodName, signature, body string) (string, error) {
+	systemPrompt := "You are a Go documentation expert. Generate concise, accurate doc comments for Go methods. Follow Go conventions: start with the method name, be brief, explain what it does (not how)."
+
+	userPrompt := fmt.Sprintf(`Generate a doc comment for this Go method:
+
+Receiver: %s
+%s
+%s
+
+Return ONLY the comment text, without code fences or additional explanation.`, receiverType, signature, body)
+
+	return s.GenerateWithCache(FlagAutoComments, systemPrompt, userPrompt, 150)
+}
+
+// GenerateTypeComment generates a comment for an uncommented type
+func (s *Service) GenerateTypeComment(typeName, typeDefinition string) (string, error) {
+	systemPrompt := "You are a Go documentation expert. Generate concise, accurate doc comments for Go types. Follow Go conventions: start with the type name, be brief, explain what it represents."
+
+	userPrompt := fmt.Sprintf(`Generate a doc comment for this Go type:
+
+type %s %s
+
+Return ONLY the comment text, without code fences or additional explanation.`, typeName, typeDefinition)
+
+	return s.GenerateWithCache(FlagAutoComments, systemPrompt, userPrompt, 100)
+}

@@ -253,6 +253,14 @@
                     <div class="Documentation-functionBody">
                         {{formatDocHTML .Doc}}
                     </div>
+                    {{else}}
+                    {{$aiDocKey := printf "func:%s" .Name}}
+                    {{if index $.AIDocs $aiDocKey}}
+                    <div class="Documentation-functionBody Documentation-aiGenerated">
+                        <span class="AIBadge" title="AI-generated documentation">AI</span>
+                        <p>{{index $.AIDocs $aiDocKey}}</p>
+                    </div>
+                    {{end}}
                     {{end}}
                     {{if .Examples}}
                     <div class="Documentation-examples">
@@ -298,6 +306,14 @@
                     <div class="Documentation-typeBody">
                         {{formatDocHTML .Doc}}
                     </div>
+                    {{else}}
+                    {{$aiDocKey := printf "type:%s" .Name}}
+                    {{if index $.AIDocs $aiDocKey}}
+                    <div class="Documentation-typeBody Documentation-aiGenerated">
+                        <span class="AIBadge" title="AI-generated documentation">AI</span>
+                        <p>{{index $.AIDocs $aiDocKey}}</p>
+                    </div>
+                    {{end}}
                     {{end}}
 
                     {{if .Examples}}
@@ -393,6 +409,14 @@
                         <div class="Documentation-functionBody">
                             {{formatDocHTML .Doc}}
                         </div>
+                        {{else}}
+                        {{$aiDocKey := printf "method:%s" .Name}}
+                        {{if index $.AIDocs $aiDocKey}}
+                        <div class="Documentation-functionBody Documentation-aiGenerated">
+                            <span class="AIBadge" title="AI-generated documentation">AI</span>
+                            <p>{{index $.AIDocs $aiDocKey}}</p>
+                        </div>
+                        {{end}}
                         {{end}}
                         {{if .Examples}}
                         <div class="Documentation-examples">

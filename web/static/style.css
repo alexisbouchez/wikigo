@@ -896,6 +896,29 @@ code {
     opacity: 0.85;
 }
 
+.AIBadge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 0.25rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.Documentation-aiGenerated {
+    background-color: rgba(102, 126, 234, 0.05);
+    border-left: 3px solid #667eea;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+}
+
+[data-theme="dark"] .Documentation-aiGenerated {
+    background-color: rgba(102, 126, 234, 0.1);
+}
+
 .is-deprecated .Documentation-signature,
 .is-deprecated .Documentation-declaration {
     border-left: 3px solid #d9534f;

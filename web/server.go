@@ -563,18 +563,36 @@ func (s *Server) renderPackage(w http.ResponseWriter, r *http.Request, pkg *Pack
 	subdirs := s.getSubdirectories(pkg.ImportPath)
 	importedByCount := s.GetImportedByCount(pkg.ImportPath)
 
+	// Fetch AI-generated docs if database is available
+	aiDocsMap := make(map[string]string) // key: "kind:name" -> value: generated doc
+	if s.db != nil {
+		docs, err := s.db.GetAIDocsForPackage(pkg.ImportPath)
+		if err != nil {
+			log.Printf("Error fetching AI docs: %v", err)
+		} else {
+			for _, doc := range docs {
+				if doc.Approved { // Only show approved AI docs
+					key := fmt.Sprintf("%s:%s", doc.SymbolKind, doc.SymbolName)
+					aiDocsMap[key] = doc.GeneratedDoc
+				}
+			}
+		}
+	}
+
 	data := struct {
 		Title           string
 		SearchQuery     string
 		Pkg             *PackageDoc
 		Subdirectories  []Subdirectory
 		ImportedByCount int
+		AIDocs          map[string]string
 	}{
 		Title:           pkg.Name + " package - " + pkg.ImportPath + " - Go Packages",
 		SearchQuery:     "",
 		Pkg:             pkg,
 		Subdirectories:  subdirs,
 		ImportedByCount: importedByCount,
+		AIDocs:          aiDocsMap,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "package.html", data); err != nil {

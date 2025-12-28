@@ -72,6 +72,22 @@ type ModuleVersion struct {
 	CreatedAt  time.Time `json:"created_at"` // When we indexed it
 }
 
+// AIDoc represents AI-generated documentation for a symbol
+type AIDoc struct {
+	ID           int64     `json:"id"`
+	SymbolName   string    `json:"symbol_name"`
+	SymbolKind   string    `json:"symbol_kind"` // "func", "type", "method"
+	ImportPath   string    `json:"import_path"`
+	GeneratedDoc string    `json:"generated_doc"`
+	Approved     bool      `json:"approved"`
+	Flagged      bool      `json:"flagged"`
+	FlagReason   string    `json:"flag_reason,omitempty"`
+	CostUSD      float64   `json:"cost_usd"`
+	Tokens       int       `json:"tokens"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // Open opens or creates a SQLite database
 func Open(path string) (*DB, error) {
 	conn, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_busy_timeout=5000")
@@ -234,6 +250,27 @@ func (db *DB) migrate() error {
 
 		`CREATE INDEX IF NOT EXISTS idx_module_versions_path ON module_versions(module_path)`,
 		`CREATE INDEX IF NOT EXISTS idx_module_versions_timestamp ON module_versions(timestamp DESC)`,
+
+		// AI-generated documentation table
+		`CREATE TABLE IF NOT EXISTS ai_docs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			symbol_name TEXT NOT NULL,
+			symbol_kind TEXT NOT NULL,
+			import_path TEXT NOT NULL,
+			generated_doc TEXT NOT NULL,
+			approved INTEGER DEFAULT 0,
+			flagged INTEGER DEFAULT 0,
+			flag_reason TEXT,
+			cost_usd REAL DEFAULT 0,
+			tokens INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(import_path, symbol_name, symbol_kind)
+		)`,
+
+		`CREATE INDEX IF NOT EXISTS idx_ai_docs_import_path ON ai_docs(import_path)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_docs_approved ON ai_docs(approved)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_docs_flagged ON ai_docs(flagged)`,
 	}
 
 	for _, migration := range migrations {
@@ -765,4 +802,99 @@ func (db *DB) CountModuleVersions(modulePath string) (int, error) {
 		SELECT COUNT(*) FROM module_versions WHERE module_path = ?
 	`, modulePath).Scan(&count)
 	return count, err
+}
+
+// UpsertAIDoc inserts or updates an AI-generated doc
+func (db *DB) UpsertAIDoc(doc *AIDoc) error {
+	_, err := db.conn.Exec(`
+		INSERT INTO ai_docs (symbol_name, symbol_kind, import_path, generated_doc, approved, flagged, flag_reason, cost_usd, tokens)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(import_path, symbol_name, symbol_kind) DO UPDATE SET
+			generated_doc = excluded.generated_doc,
+			updated_at = CURRENT_TIMESTAMP
+	`, doc.SymbolName, doc.SymbolKind, doc.ImportPath, doc.GeneratedDoc, doc.Approved, doc.Flagged, doc.FlagReason, doc.CostUSD, doc.Tokens)
+	return err
+}
+
+// GetAIDoc retrieves an AI-generated doc for a symbol
+func (db *DB) GetAIDoc(importPath, symbolName, symbolKind string) (*AIDoc, error) {
+	row := db.conn.QueryRow(`
+		SELECT id, symbol_name, symbol_kind, import_path, generated_doc, approved, flagged, flag_reason, cost_usd, tokens, created_at, updated_at
+		FROM ai_docs
+		WHERE import_path = ? AND symbol_name = ? AND symbol_kind = ?
+	`, importPath, symbolName, symbolKind)
+
+	doc := &AIDoc{}
+	var flagReason sql.NullString
+	err := row.Scan(&doc.ID, &doc.SymbolName, &doc.SymbolKind, &doc.ImportPath, &doc.GeneratedDoc,
+		&doc.Approved, &doc.Flagged, &flagReason, &doc.CostUSD, &doc.Tokens, &doc.CreatedAt, &doc.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning ai doc: %w", err)
+	}
+
+	if flagReason.Valid {
+		doc.FlagReason = flagReason.String
+	}
+
+	return doc, nil
+}
+
+// GetAIDocsForPackage retrieves all AI-generated docs for a package
+func (db *DB) GetAIDocsForPackage(importPath string) ([]*AIDoc, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, symbol_name, symbol_kind, import_path, generated_doc, approved, flagged, flag_reason, cost_usd, tokens, created_at, updated_at
+		FROM ai_docs
+		WHERE import_path = ?
+		ORDER BY symbol_kind, symbol_name
+	`, importPath)
+	if err != nil {
+		return nil, fmt.Errorf("querying ai docs: %w", err)
+	}
+	defer rows.Close()
+
+	var docs []*AIDoc
+	for rows.Next() {
+		doc := &AIDoc{}
+		var flagReason sql.NullString
+		err := rows.Scan(&doc.ID, &doc.SymbolName, &doc.SymbolKind, &doc.ImportPath, &doc.GeneratedDoc,
+			&doc.Approved, &doc.Flagged, &flagReason, &doc.CostUSD, &doc.Tokens, &doc.CreatedAt, &doc.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("scanning ai doc: %w", err)
+		}
+		if flagReason.Valid {
+			doc.FlagReason = flagReason.String
+		}
+		docs = append(docs, doc)
+	}
+
+	return docs, rows.Err()
+}
+
+// ApproveAIDoc marks an AI-generated doc as approved
+func (db *DB) ApproveAIDoc(id int64) error {
+	_, err := db.conn.Exec(`UPDATE ai_docs SET approved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
+	return err
+}
+
+// FlagAIDoc marks an AI-generated doc as flagged with a reason
+func (db *DB) FlagAIDoc(id int64, reason string) error {
+	_, err := db.conn.Exec(`UPDATE ai_docs SET flagged = 1, flag_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, reason, id)
+	return err
+}
+
+// GetAIDocStats returns statistics about AI-generated documentation
+func (db *DB) GetAIDocStats() (totalDocs, approvedDocs, flaggedDocs int, totalCost float64, err error) {
+	err = db.conn.QueryRow(`
+		SELECT
+			COUNT(*),
+			SUM(CASE WHEN approved = 1 THEN 1 ELSE 0 END),
+			SUM(CASE WHEN flagged = 1 THEN 1 ELSE 0 END),
+			SUM(cost_usd)
+		FROM ai_docs
+	`).Scan(&totalDocs, &approvedDocs, &flaggedDocs, &totalCost)
+	return
 }
