@@ -90,7 +90,7 @@
 ## Infrastructure
 
 ### Indexing
-- [ ] Crawl and index Go modules from proxy.golang.org
+- [x] Crawl and index Go modules from proxy.golang.org
 - [x] Parse and store package documentation (SQLite database)
 - [x] Track import relationships (imports table)
 - [ ] Version history tracking
