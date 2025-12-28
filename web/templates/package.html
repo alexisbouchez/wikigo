@@ -16,8 +16,9 @@
     </nav>
     <div class="Package-header">
         <h1 class="Package-title">package {{.Pkg.Name}}</h1>
-        <div class="Package-badges">
-            <span class="Badge">{{.Pkg.ImportPath}}</span>
+        <div class="Package-import">
+            <code class="Package-importPath">{{.Pkg.ImportPath}}</code>
+            <button class="Package-copyBtn" onclick="copyImportPath(this)" data-path="{{.Pkg.ImportPath}}">Copy</button>
         </div>
     </div>
 

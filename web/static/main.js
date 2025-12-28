@@ -1,5 +1,13 @@
 // Main JavaScript for wikigo
 
+function copyImportPath(btn) {
+    const path = btn.dataset.path;
+    navigator.clipboard.writeText(path).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Prism syntax highlighting
     if (typeof Prism !== 'undefined') {

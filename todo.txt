@@ -46,7 +46,7 @@
 - [ ] "Report a Vulnerability" link
 
 ### UI Enhancements
-- [ ] Copy button for package import path
+- [x] Copy button for package import path
 - [ ] Copy button for code blocks
 - [ ] Dark mode toggle
 - [ ] Keyboard shortcuts (/ for search, etc.)
