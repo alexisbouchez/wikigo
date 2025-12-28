@@ -193,6 +193,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/license/", s.handleLicense)
 	mux.HandleFunc("/imports/", s.handleImports)
 	mux.HandleFunc("/mod/", s.handleModule)
+	mux.HandleFunc("/symbols", s.handleSymbolSearch)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -586,6 +587,152 @@ func (s *Server) handleImports(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "imports.html", data); err != nil {
 		log.Printf("Error rendering imports: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// SymbolResult represents a search result for a symbol
+type SymbolResult struct {
+	Name       string
+	Kind       string // "func", "type", "method", "const", "var"
+	Package    string
+	ImportPath string
+	Synopsis   string
+	Deprecated bool
+}
+
+// handleSymbolSearch handles symbol search across all packages
+func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	kind := r.URL.Query().Get("kind") // func, type, method, const, var
+
+	var results []SymbolResult
+
+	if query != "" {
+		queryLower := strings.ToLower(query)
+
+		for _, pkg := range s.packages {
+			// Search functions
+			if kind == "" || kind == "func" {
+				for _, fn := range pkg.Functions {
+					if strings.Contains(strings.ToLower(fn.Name), queryLower) {
+						results = append(results, SymbolResult{
+							Name:       fn.Name,
+							Kind:       "func",
+							Package:    pkg.Name,
+							ImportPath: pkg.ImportPath,
+							Synopsis:   shortDoc(fn.Doc),
+							Deprecated: fn.Deprecated,
+						})
+					}
+				}
+			}
+
+			// Search types
+			for _, t := range pkg.Types {
+				if kind == "" || kind == "type" {
+					if strings.Contains(strings.ToLower(t.Name), queryLower) {
+						results = append(results, SymbolResult{
+							Name:       t.Name,
+							Kind:       "type",
+							Package:    pkg.Name,
+							ImportPath: pkg.ImportPath,
+							Synopsis:   shortDoc(t.Doc),
+							Deprecated: t.Deprecated,
+						})
+					}
+				}
+
+				// Search methods
+				if kind == "" || kind == "method" {
+					for _, m := range t.Methods {
+						if strings.Contains(strings.ToLower(m.Name), queryLower) {
+							results = append(results, SymbolResult{
+								Name:       t.Name + "." + m.Name,
+								Kind:       "method",
+								Package:    pkg.Name,
+								ImportPath: pkg.ImportPath,
+								Synopsis:   shortDoc(m.Doc),
+								Deprecated: m.Deprecated,
+							})
+						}
+					}
+				}
+
+				// Search type funcs (constructors)
+				if kind == "" || kind == "func" {
+					for _, fn := range t.Functions {
+						if strings.Contains(strings.ToLower(fn.Name), queryLower) {
+							results = append(results, SymbolResult{
+								Name:       fn.Name,
+								Kind:       "func",
+								Package:    pkg.Name,
+								ImportPath: pkg.ImportPath,
+								Synopsis:   shortDoc(fn.Doc),
+								Deprecated: fn.Deprecated,
+							})
+						}
+					}
+				}
+			}
+
+			// Search constants
+			if kind == "" || kind == "const" {
+				for _, c := range pkg.Constants {
+					for _, name := range c.Names {
+						if strings.Contains(strings.ToLower(name), queryLower) {
+							results = append(results, SymbolResult{
+								Name:       name,
+								Kind:       "const",
+								Package:    pkg.Name,
+								ImportPath: pkg.ImportPath,
+								Synopsis:   shortDoc(c.Doc),
+							})
+						}
+					}
+				}
+			}
+
+			// Search variables
+			if kind == "" || kind == "var" {
+				for _, v := range pkg.Variables {
+					for _, name := range v.Names {
+						if strings.Contains(strings.ToLower(name), queryLower) {
+							results = append(results, SymbolResult{
+								Name:       name,
+								Kind:       "var",
+								Package:    pkg.Name,
+								ImportPath: pkg.ImportPath,
+								Synopsis:   shortDoc(v.Doc),
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Limit results
+	if len(results) > 100 {
+		results = results[:100]
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		Query       string
+		Kind        string
+		Results     []SymbolResult
+	}{
+		Title:       "Symbol Search - Go Packages",
+		SearchQuery: query,
+		Query:       query,
+		Kind:        kind,
+		Results:     results,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "symbols.html", data); err != nil {
+		log.Printf("Error rendering symbols: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

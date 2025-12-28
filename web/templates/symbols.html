@@ -1,0 +1,73 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="Symbols">
+        <h1 class="Symbols-title">Symbol Search</h1>
+
+        <form class="Symbols-form" action="/symbols" method="GET">
+            <div class="Symbols-searchRow">
+                <input type="text" name="q" value="{{.Query}}" placeholder="Search for functions, types, methods..." class="Symbols-input" autofocus>
+                <button type="submit" class="Symbols-submit">Search</button>
+            </div>
+            <div class="Symbols-filters">
+                <label class="Symbols-filterLabel">
+                    <input type="radio" name="kind" value="" {{if eq .Kind ""}}checked{{end}}> All
+                </label>
+                <label class="Symbols-filterLabel">
+                    <input type="radio" name="kind" value="func" {{if eq .Kind "func"}}checked{{end}}> Functions
+                </label>
+                <label class="Symbols-filterLabel">
+                    <input type="radio" name="kind" value="type" {{if eq .Kind "type"}}checked{{end}}> Types
+                </label>
+                <label class="Symbols-filterLabel">
+                    <input type="radio" name="kind" value="method" {{if eq .Kind "method"}}checked{{end}}> Methods
+                </label>
+                <label class="Symbols-filterLabel">
+                    <input type="radio" name="kind" value="const" {{if eq .Kind "const"}}checked{{end}}> Constants
+                </label>
+                <label class="Symbols-filterLabel">
+                    <input type="radio" name="kind" value="var" {{if eq .Kind "var"}}checked{{end}}> Variables
+                </label>
+            </div>
+        </form>
+
+        {{if .Query}}
+        <p class="Symbols-count">{{len .Results}} symbol{{if ne (len .Results) 1}}s{{end}} found</p>
+
+        {{if .Results}}
+        <div class="Symbols-results">
+            {{range .Results}}
+            <div class="SymbolResult{{if .Deprecated}} is-deprecated{{end}}">
+                <div class="SymbolResult-header">
+                    <span class="SymbolResult-kind SymbolResult-kind--{{.Kind}}">{{.Kind}}</span>
+                    <a href="/{{.ImportPath}}#{{.Name}}" class="SymbolResult-name">{{.Name}}</a>
+                    {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
+                </div>
+                <div class="SymbolResult-meta">
+                    <a href="/{{.ImportPath}}" class="SymbolResult-package">{{.ImportPath}}</a>
+                </div>
+                {{if .Synopsis}}
+                <p class="SymbolResult-synopsis">{{.Synopsis}}</p>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="EmptyState">
+            <p>No symbols found matching "{{.Query}}"</p>
+            <p>Try a different search term or adjust the filters.</p>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="Symbols-help">
+            <h2>Search Tips</h2>
+            <ul>
+                <li>Search for function names like <a href="/symbols?q=Printf">Printf</a></li>
+                <li>Search for type names like <a href="/symbols?q=Reader">Reader</a></li>
+                <li>Search for method names like <a href="/symbols?q=Close">Close</a></li>
+                <li>Use filters to narrow down results</li>
+            </ul>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{template "footer" .}}
