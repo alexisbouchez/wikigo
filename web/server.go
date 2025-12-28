@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/alexisbouchez/wikigo/db"
@@ -470,14 +471,64 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 
 // renderHome renders the home page
 func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
+	// Get pagination params
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if n, err := fmt.Sscanf(p, "%d", &page); err != nil || n != 1 || page < 1 {
+			page = 1
+		}
+	}
+
+	perPage := 100
+	offset := (page - 1) * perPage
+
+	// Convert map to sorted slice
+	var allPackages []*PackageDoc
+	for _, pkg := range s.packages {
+		allPackages = append(allPackages, pkg)
+	}
+
+	// Sort by import path
+	sort.Slice(allPackages, func(i, j int) bool {
+		return allPackages[i].ImportPath < allPackages[j].ImportPath
+	})
+
+	total := len(allPackages)
+	totalPages := (total + perPage - 1) / perPage
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	// Paginate
+	var packages []*PackageDoc
+	if offset < total {
+		end := offset + perPage
+		if end > total {
+			end = total
+		}
+		packages = allPackages[offset:end]
+	}
+
 	data := struct {
 		Title       string
 		SearchQuery string
-		Packages    map[string]*PackageDoc
+		Packages    []*PackageDoc
+		Page        int
+		TotalPages  int
+		Total       int
+		PerPage     int
+		HasPrev     bool
+		HasNext     bool
 	}{
 		Title:       "Go Packages",
 		SearchQuery: "",
-		Packages:    s.packages,
+		Packages:    packages,
+		Page:        page,
+		TotalPages:  totalPages,
+		Total:       total,
+		PerPage:     perPage,
+		HasPrev:     page > 1,
+		HasNext:     page < totalPages,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "home.html", data); err != nil {
@@ -540,11 +591,24 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get pagination params
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if n, err := fmt.Sscanf(p, "%d", &page); err != nil || n != 1 || page < 1 {
+			page = 1
+		}
+	}
+
+	perPage := 50
+	offset := (page - 1) * perPage
+
+	var allResults []*PackageDoc
 	var results []*PackageDoc
+	var total int
 
 	// Use database search if available (much faster)
 	if s.db != nil {
-		dbPkgs, err := s.db.SearchPackages(query, 100)
+		dbPkgs, err := s.db.SearchPackages(query, 1000) // Get more for pagination
 		if err != nil {
 			log.Printf("Database search error: %v", err)
 			// Fall back to in-memory search
@@ -553,8 +617,18 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 			for _, dbPkg := range dbPkgs {
 				pkg, ok := s.packages[dbPkg.ImportPath]
 				if ok {
-					results = append(results, pkg)
+					allResults = append(allResults, pkg)
 				}
+			}
+			total = len(allResults)
+
+			// Paginate
+			if offset < total {
+				end := offset + perPage
+				if end > total {
+					end = total
+				}
+				results = allResults[offset:end]
 			}
 			goto render
 		}
@@ -567,22 +641,49 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(strings.ToLower(pkg.ImportPath), queryLower) ||
 				strings.Contains(strings.ToLower(pkg.Name), queryLower) ||
 				strings.Contains(strings.ToLower(pkg.Synopsis), queryLower) {
-				results = append(results, pkg)
+				allResults = append(allResults, pkg)
 			}
+		}
+		total = len(allResults)
+
+		// Paginate
+		if offset < total {
+			end := offset + perPage
+			if end > total {
+				end = total
+			}
+			results = allResults[offset:end]
 		}
 	}
 
 render:
+	totalPages := (total + perPage - 1) / perPage
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
 	data := struct {
 		Title       string
 		SearchQuery string
 		Query       string
 		Results     []*PackageDoc
+		Page        int
+		TotalPages  int
+		Total       int
+		PerPage     int
+		HasPrev     bool
+		HasNext     bool
 	}{
 		Title:       "Search Results - " + query + " - Go Packages",
 		SearchQuery: query,
 		Query:       query,
 		Results:     results,
+		Page:        page,
+		TotalPages:  totalPages,
+		Total:       total,
+		PerPage:     perPage,
+		HasPrev:     page > 1,
+		HasNext:     page < totalPages,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "search.html", data); err != nil {
@@ -883,12 +984,25 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	kind := r.URL.Query().Get("kind") // func, type, method, const, var
 
+	// Get pagination params
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if n, err := fmt.Sscanf(p, "%d", &page); err != nil || n != 1 || page < 1 {
+			page = 1
+		}
+	}
+
+	perPage := 100
+	offset := (page - 1) * perPage
+
+	var allResults []SymbolResult
 	var results []SymbolResult
+	var total int
 
 	if query != "" {
 		// Use database search if available (much faster)
 		if s.db != nil {
-			dbSymbols, err := s.db.SearchSymbols(query, kind, 100)
+			dbSymbols, err := s.db.SearchSymbols(query, kind, 1000) // Get more for pagination
 			if err != nil {
 				log.Printf("Database symbol search error: %v", err)
 				// Fall back to in-memory search
@@ -900,7 +1014,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 					if ok {
 						packageName = pkg.Name
 					}
-					results = append(results, SymbolResult{
+					allResults = append(allResults, SymbolResult{
 						Name:       sym.Name,
 						Kind:       sym.Kind,
 						Package:    packageName,
@@ -908,6 +1022,16 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 						Synopsis:   sym.Synopsis,
 						Deprecated: sym.Deprecated,
 					})
+				}
+				total = len(allResults)
+
+				// Paginate
+				if offset < total {
+					end := offset + perPage
+					if end > total {
+						end = total
+					}
+					results = allResults[offset:end]
 				}
 				goto render
 			}
@@ -922,7 +1046,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 				if kind == "" || kind == "func" {
 					for _, fn := range pkg.Functions {
 						if strings.Contains(strings.ToLower(fn.Name), queryLower) {
-							results = append(results, SymbolResult{
+							allResults = append(allResults, SymbolResult{
 								Name:       fn.Name,
 								Kind:       "func",
 								Package:    pkg.Name,
@@ -938,7 +1062,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 				for _, t := range pkg.Types {
 					if kind == "" || kind == "type" {
 						if strings.Contains(strings.ToLower(t.Name), queryLower) {
-							results = append(results, SymbolResult{
+							allResults = append(allResults, SymbolResult{
 								Name:       t.Name,
 								Kind:       "type",
 								Package:    pkg.Name,
@@ -953,7 +1077,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 					if kind == "" || kind == "method" {
 						for _, m := range t.Methods {
 							if strings.Contains(strings.ToLower(m.Name), queryLower) {
-								results = append(results, SymbolResult{
+								allResults = append(allResults, SymbolResult{
 									Name:       t.Name + "." + m.Name,
 									Kind:       "method",
 									Package:    pkg.Name,
@@ -969,7 +1093,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 					if kind == "" || kind == "func" {
 						for _, fn := range t.Functions {
 							if strings.Contains(strings.ToLower(fn.Name), queryLower) {
-								results = append(results, SymbolResult{
+								allResults = append(allResults, SymbolResult{
 									Name:       fn.Name,
 									Kind:       "func",
 									Package:    pkg.Name,
@@ -987,7 +1111,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 					for _, c := range pkg.Constants {
 						for _, name := range c.Names {
 							if strings.Contains(strings.ToLower(name), queryLower) {
-								results = append(results, SymbolResult{
+								allResults = append(allResults, SymbolResult{
 									Name:       name,
 									Kind:       "const",
 									Package:    pkg.Name,
@@ -1004,7 +1128,7 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 					for _, v := range pkg.Variables {
 						for _, name := range v.Names {
 							if strings.Contains(strings.ToLower(name), queryLower) {
-								results = append(results, SymbolResult{
+								allResults = append(allResults, SymbolResult{
 									Name:       name,
 									Kind:       "var",
 									Package:    pkg.Name,
@@ -1017,14 +1141,24 @@ func (s *Server) handleSymbolSearch(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Limit results
-			if len(results) > 100 {
-				results = results[:100]
+			total = len(allResults)
+
+			// Paginate
+			if offset < total {
+				end := offset + perPage
+				if end > total {
+					end = total
+				}
+				results = allResults[offset:end]
 			}
 		}
 	}
 
 render:
+	totalPages := (total + perPage - 1) / perPage
+	if totalPages < 1 {
+		totalPages = 1
+	}
 
 	data := struct {
 		Title       string
@@ -1032,12 +1166,24 @@ render:
 		Query       string
 		Kind        string
 		Results     []SymbolResult
+		Page        int
+		TotalPages  int
+		Total       int
+		PerPage     int
+		HasPrev     bool
+		HasNext     bool
 	}{
 		Title:       "Symbol Search - Go Packages",
 		SearchQuery: query,
 		Query:       query,
 		Kind:        kind,
 		Results:     results,
+		Page:        page,
+		TotalPages:  totalPages,
+		Total:       total,
+		PerPage:     perPage,
+		HasPrev:     page > 1,
+		HasNext:     page < totalPages,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "symbols.html", data); err != nil {
