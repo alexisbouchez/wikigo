@@ -357,3 +357,151 @@
   - CodeSandbox/StackBlitz integration
   - Run examples in browser
   - Edit and fork examples
+
+## Rust Support
+
+### Core Infrastructure
+- [ ] Add Rust parser integration
+  - Evaluate parser options (syn crate via FFI, tree-sitter, regex-based)
+  - Parse Rust files with chosen solution
+  - Extract public items (functions, structs, enums, traits, modules)
+  - Handle Rust-specific syntax (impl blocks, macros, lifetimes)
+  - Tests for parser
+
+### Symbol Extraction
+- [ ] Extract Rust symbols
+  - Functions and methods (pub fn)
+  - Structs and their fields
+  - Enums and variants
+  - Traits and trait implementations
+  - Constants and statics
+  - Modules and submodules
+  - Type aliases
+  - Macros (macro_rules!, proc macros)
+
+### Documentation Parsing
+- [ ] Parse Rust doc comments
+  - /// and //! style comments
+  - #[doc = "..."] attributes
+  - Extract code examples from doc tests
+  - Parse markdown in doc comments
+  - Cross-reference links [Type], [function]
+
+### Crates.io Support
+- [ ] Crawl crates.io registry
+  - Fetch crate metadata from API
+  - Download and extract .crate files
+  - Parse Cargo.toml (dependencies, features, metadata)
+  - Handle workspace crates
+  - Search crates.io
+  - Tests for crate fetching
+
+### GitHub Repository Support
+- [ ] Crawl GitHub for Rust projects
+  - Search GitHub API for Rust repositories
+  - Download repositories with Cargo.toml
+  - Detect workspace structure
+  - Parse Rust files from repository
+  - Index symbols into database
+
+### Database Schema
+- [ ] Extend database for Rust crates
+  - New table: rust_crates (name, version, description, license, authors)
+  - New table: rust_symbols (name, kind, signature, visibility, file_path)
+  - Store Cargo.toml metadata (features, dependencies)
+  - Store documentation and examples
+- [ ] Index Rust symbols for search
+  - FTS index on symbol names and docs
+  - Type-aware search (filter by struct/enum/trait)
+  - Dependency graph indexing
+
+### Web UI
+- [ ] Crate page for Rust crates
+  - Display README.md
+  - Show API documentation
+  - List public exports (functions, types, traits)
+  - Syntax highlighting for Rust
+  - Show feature flags
+- [ ] Symbol browser
+  - Navigate modules and items
+  - View trait implementations
+  - Show type definitions with generic parameters
+  - Display macro documentation
+- [ ] Search integration
+  - Search crates by name
+  - Search symbols within crates
+  - Filter by language (Go vs JS/TS vs Rust)
+
+### Type System Integration
+- [ ] Rust type resolution
+  - Resolve imported types
+  - Display trait bounds
+  - Show generic type parameters
+  - Handle associated types
+- [ ] Type documentation
+  - Generate type signature strings
+  - Format complex types readably
+  - Link to type definitions
+  - Show where clauses
+
+### Build System Integration
+- [ ] Cargo.toml parsing
+  - Parse dependencies and dev-dependencies
+  - Parse feature flags
+  - Detect build scripts (build.rs)
+  - Handle workspace configuration
+- [ ] Feature analysis
+  - Show optional dependencies
+  - Display feature dependency tree
+  - Detect default features
+
+### Testing
+- [ ] Rust parser tests
+  - Test various Rust syntax (impl, traits, generics, lifetimes)
+  - Test macro definitions
+  - Test doc comment parsing
+- [ ] Crates.io crawler tests
+  - Test crate fetching
+  - Test version resolution
+  - Test workspace crates
+- [ ] Integration tests
+  - Full pipeline: crawl → parse → index → display
+  - Test with real crates (serde, tokio, actix-web)
+
+### Performance
+- [ ] Lazy loading for large crates
+  - Stream parsing for huge files
+  - Paginate symbol lists
+  - Background indexing
+- [ ] Caching
+  - Cache parsed crate metadata
+  - Cache type resolution results
+  - Cache crates.io API responses
+
+### AI Enhancements for Rust
+- [ ] Auto-generate doc comments
+  - Detect uncommented pub items
+  - Generate /// comments from signatures
+  - Infer safety documentation for unsafe code
+- [ ] Code explanation
+  - Explain lifetime annotations
+  - Explain trait bounds and where clauses
+  - Explain unsafe blocks
+  - Explain macro expansions
+- [ ] Type suggestions
+  - Suggest trait implementations
+  - Suggest type aliases for complex types
+
+### Advanced Features
+- [ ] Unsafe code analysis
+  - Highlight unsafe blocks
+  - Document safety invariants
+  - Track unsafe dependencies
+- [ ] Macro expansion viewer
+  - Show expanded macro code
+  - Explain procedural macros
+  - Document macro syntax
+- [ ] Cross-platform support
+  - Show platform-specific code (cfg attributes)
+  - Display target compatibility
+  - Document feature gate requirements

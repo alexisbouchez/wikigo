@@ -373,6 +373,92 @@ func (db *DB) migrate() error {
 			INSERT INTO js_symbols_fts(docid, name, signature, doc)
 			VALUES (new.id, new.name, new.signature, new.doc);
 		END`,
+
+		// Rust crates table
+		`CREATE TABLE IF NOT EXISTS rust_crates (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			version TEXT,
+			description TEXT,
+			license TEXT,
+			repository TEXT,
+			homepage TEXT,
+			documentation TEXT,
+			downloads INTEGER DEFAULT 0,
+			keywords_json TEXT,
+			categories_json TEXT,
+			dependencies_json TEXT,
+			authors_json TEXT,
+			readme TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// Rust symbols table
+		`CREATE TABLE IF NOT EXISTS rust_symbols (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			signature TEXT,
+			crate_id INTEGER NOT NULL,
+			crate_name TEXT NOT NULL,
+			file_path TEXT,
+			line INTEGER DEFAULT 0,
+			public INTEGER DEFAULT 0,
+			doc TEXT,
+			FOREIGN KEY (crate_id) REFERENCES rust_crates(id) ON DELETE CASCADE
+		)`,
+
+		// Rust crates FTS table
+		`CREATE VIRTUAL TABLE IF NOT EXISTS rust_crates_fts USING fts4(
+			name,
+			description,
+			keywords,
+			content=rust_crates,
+			tokenize=porter
+		)`,
+
+		// Rust symbols FTS table
+		`CREATE VIRTUAL TABLE IF NOT EXISTS rust_symbols_fts USING fts4(
+			name,
+			signature,
+			doc,
+			content=rust_symbols,
+			tokenize=porter
+		)`,
+
+		// Triggers for Rust crates FTS
+		`CREATE TRIGGER IF NOT EXISTS rust_crates_ai AFTER INSERT ON rust_crates BEGIN
+			INSERT INTO rust_crates_fts(docid, name, description, keywords)
+			VALUES (new.id, new.name, new.description, new.keywords_json);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS rust_crates_ad AFTER DELETE ON rust_crates BEGIN
+			DELETE FROM rust_crates_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS rust_crates_au AFTER UPDATE ON rust_crates BEGIN
+			DELETE FROM rust_crates_fts WHERE docid = old.id;
+			INSERT INTO rust_crates_fts(docid, name, description, keywords)
+			VALUES (new.id, new.name, new.description, new.keywords_json);
+		END`,
+
+		// Triggers for Rust symbols FTS
+		`CREATE TRIGGER IF NOT EXISTS rust_symbols_ai AFTER INSERT ON rust_symbols BEGIN
+			INSERT INTO rust_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS rust_symbols_ad AFTER DELETE ON rust_symbols BEGIN
+			DELETE FROM rust_symbols_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS rust_symbols_au AFTER UPDATE ON rust_symbols BEGIN
+			DELETE FROM rust_symbols_fts WHERE docid = old.id;
+			INSERT INTO rust_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
 	}
 
 	for _, migration := range migrations {
@@ -1207,4 +1293,234 @@ func (db *DB) GetJSPackage(name string) (*JSPackage, error) {
 	}
 
 	return &pkg, nil
+}
+
+// RustCrate represents a Rust crate
+type RustCrate struct {
+	ID             int64
+	Name           string
+	Version        string
+	Description    string
+	License        string
+	Repository     string
+	Homepage       string
+	Documentation  string
+	Downloads      int
+	Keywords       []string
+	Categories     []string
+	Dependencies   map[string]string
+	Authors        []string
+	README         string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IndexedAt      time.Time
+}
+
+// RustSymbol represents a Rust symbol
+type RustSymbol struct {
+	ID        int64
+	Name      string
+	Kind      string
+	Signature string
+	CrateID   int64
+	CrateName string
+	FilePath  string
+	Line      int
+	Public    bool
+	Doc       string
+}
+
+// UpsertRustCrate inserts or updates a Rust crate
+func (db *DB) UpsertRustCrate(crate *RustCrate) (int64, error) {
+	keywordsJSON, _ := json.Marshal(crate.Keywords)
+	categoriesJSON, _ := json.Marshal(crate.Categories)
+	dependenciesJSON, _ := json.Marshal(crate.Dependencies)
+	authorsJSON, _ := json.Marshal(crate.Authors)
+
+	result, err := db.conn.Exec(`
+		INSERT INTO rust_crates (name, version, description, license, repository,
+			homepage, documentation, downloads, keywords_json, categories_json,
+			dependencies_json, authors_json, readme, updated_at, indexed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(name) DO UPDATE SET
+			version = excluded.version,
+			description = excluded.description,
+			license = excluded.license,
+			repository = excluded.repository,
+			homepage = excluded.homepage,
+			documentation = excluded.documentation,
+			downloads = excluded.downloads,
+			keywords_json = excluded.keywords_json,
+			categories_json = excluded.categories_json,
+			dependencies_json = excluded.dependencies_json,
+			authors_json = excluded.authors_json,
+			readme = excluded.readme,
+			updated_at = CURRENT_TIMESTAMP,
+			indexed_at = CURRENT_TIMESTAMP
+	`, crate.Name, crate.Version, crate.Description, crate.License, crate.Repository,
+		crate.Homepage, crate.Documentation, crate.Downloads, string(keywordsJSON),
+		string(categoriesJSON), string(dependenciesJSON), string(authorsJSON), crate.README)
+
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		// If LastInsertId fails (e.g., on UPDATE), query for the ID
+		var crateID int64
+		err = db.conn.QueryRow("SELECT id FROM rust_crates WHERE name = ?", crate.Name).Scan(&crateID)
+		if err != nil {
+			return 0, err
+		}
+		return crateID, nil
+	}
+
+	return id, nil
+}
+
+// UpsertRustSymbol inserts or updates a Rust symbol
+func (db *DB) UpsertRustSymbol(sym *RustSymbol) error {
+	_, err := db.conn.Exec(`
+		INSERT OR REPLACE INTO rust_symbols
+		(name, kind, signature, crate_id, crate_name, file_path, line, public, doc)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, sym.Name, sym.Kind, sym.Signature, sym.CrateID, sym.CrateName,
+		sym.FilePath, sym.Line, sym.Public, sym.Doc)
+
+	return err
+}
+
+// DeleteRustCrateSymbols deletes all symbols for a crate
+func (db *DB) DeleteRustCrateSymbols(crateID int64) error {
+	_, err := db.conn.Exec("DELETE FROM rust_symbols WHERE crate_id = ?", crateID)
+	return err
+}
+
+// SearchRustCrates searches for Rust crates using FTS
+func (db *DB) SearchRustCrates(query string, limit int) ([]*RustCrate, error) {
+	if query == "" {
+		query = "*"
+	}
+
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, description, license, repository, homepage,
+			documentation, downloads, keywords_json, categories_json,
+			dependencies_json, authors_json, readme, created_at, updated_at, indexed_at
+		FROM rust_crates
+		WHERE id IN (
+			SELECT docid FROM rust_crates_fts
+			WHERE rust_crates_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var crates []*RustCrate
+	for rows.Next() {
+		var crate RustCrate
+		var keywordsJSON, categoriesJSON, dependenciesJSON, authorsJSON sql.NullString
+
+		if err := rows.Scan(&crate.ID, &crate.Name, &crate.Version, &crate.Description,
+			&crate.License, &crate.Repository, &crate.Homepage, &crate.Documentation,
+			&crate.Downloads, &keywordsJSON, &categoriesJSON, &dependenciesJSON,
+			&authorsJSON, &crate.README, &crate.CreatedAt, &crate.UpdatedAt,
+			&crate.IndexedAt); err != nil {
+			return nil, err
+		}
+
+		if keywordsJSON.Valid {
+			json.Unmarshal([]byte(keywordsJSON.String), &crate.Keywords)
+		}
+		if categoriesJSON.Valid {
+			json.Unmarshal([]byte(categoriesJSON.String), &crate.Categories)
+		}
+		if dependenciesJSON.Valid {
+			json.Unmarshal([]byte(dependenciesJSON.String), &crate.Dependencies)
+		}
+		if authorsJSON.Valid {
+			json.Unmarshal([]byte(authorsJSON.String), &crate.Authors)
+		}
+
+		crates = append(crates, &crate)
+	}
+
+	return crates, nil
+}
+
+// SearchRustSymbols searches for Rust symbols using FTS
+func (db *DB) SearchRustSymbols(query string, limit int) ([]*RustSymbol, error) {
+	if query == "" {
+		query = "*"
+	}
+
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, crate_name, file_path, line
+		FROM rust_symbols
+		WHERE id IN (
+			SELECT docid FROM rust_symbols_fts
+			WHERE rust_symbols_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*RustSymbol
+	for rows.Next() {
+		var sym RustSymbol
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature,
+			&sym.CrateName, &sym.FilePath, &sym.Line); err != nil {
+			return nil, err
+		}
+		symbols = append(symbols, &sym)
+	}
+
+	return symbols, nil
+}
+
+// GetRustCrate retrieves a Rust crate by name
+func (db *DB) GetRustCrate(name string) (*RustCrate, error) {
+	var crate RustCrate
+	var keywordsJSON, categoriesJSON, dependenciesJSON, authorsJSON sql.NullString
+
+	err := db.conn.QueryRow(`
+		SELECT id, name, version, description, license, repository, homepage,
+			documentation, downloads, keywords_json, categories_json,
+			dependencies_json, authors_json, readme, created_at, updated_at, indexed_at
+		FROM rust_crates WHERE name = ?
+	`, name).Scan(&crate.ID, &crate.Name, &crate.Version, &crate.Description,
+		&crate.License, &crate.Repository, &crate.Homepage, &crate.Documentation,
+		&crate.Downloads, &keywordsJSON, &categoriesJSON, &dependenciesJSON,
+		&authorsJSON, &crate.README, &crate.CreatedAt, &crate.UpdatedAt,
+		&crate.IndexedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if keywordsJSON.Valid {
+		json.Unmarshal([]byte(keywordsJSON.String), &crate.Keywords)
+	}
+	if categoriesJSON.Valid {
+		json.Unmarshal([]byte(categoriesJSON.String), &crate.Categories)
+	}
+	if dependenciesJSON.Valid {
+		json.Unmarshal([]byte(dependenciesJSON.String), &crate.Dependencies)
+	}
+	if authorsJSON.Valid {
+		json.Unmarshal([]byte(authorsJSON.String), &crate.Authors)
+	}
+
+	return &crate, nil
 }
