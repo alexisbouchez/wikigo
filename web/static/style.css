@@ -806,6 +806,28 @@ code {
     text-decoration: underline;
 }
 
+.DeprecatedBadge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fff;
+    background-color: #d9534f;
+    border-radius: 0.25rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+.is-deprecated {
+    opacity: 0.85;
+}
+
+.is-deprecated .Documentation-signature,
+.is-deprecated .Documentation-declaration {
+    border-left: 3px solid #d9534f;
+    padding-left: 1rem;
+}
+
 .Documentation-signature,
 .Documentation-declaration {
     margin-bottom: 1rem;

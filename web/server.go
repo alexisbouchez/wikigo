@@ -62,27 +62,29 @@ type Variable struct {
 
 // Function represents a documented function
 type Function struct {
-	Name      string    `json:"name"`
-	Doc       string    `json:"doc"`
-	Signature string    `json:"signature"`
-	Recv      string    `json:"recv,omitempty"`
-	Filename  string    `json:"filename,omitempty"`
-	Line      int       `json:"line,omitempty"`
-	Examples  []Example `json:"examples,omitempty"`
+	Name       string    `json:"name"`
+	Doc        string    `json:"doc"`
+	Signature  string    `json:"signature"`
+	Recv       string    `json:"recv,omitempty"`
+	Filename   string    `json:"filename,omitempty"`
+	Line       int       `json:"line,omitempty"`
+	Deprecated bool      `json:"deprecated,omitempty"`
+	Examples   []Example `json:"examples,omitempty"`
 }
 
 // Type represents a documented type
 type Type struct {
-	Name      string     `json:"name"`
-	Doc       string     `json:"doc"`
-	Decl      string     `json:"decl"`
-	Filename  string     `json:"filename,omitempty"`
-	Line      int        `json:"line,omitempty"`
-	Constants []Constant `json:"constants,omitempty"`
-	Variables []Variable `json:"variables,omitempty"`
-	Functions []Function `json:"funcs,omitempty"`
-	Methods   []Function `json:"methods,omitempty"`
-	Examples  []Example  `json:"examples,omitempty"`
+	Name       string     `json:"name"`
+	Doc        string     `json:"doc"`
+	Decl       string     `json:"decl"`
+	Filename   string     `json:"filename,omitempty"`
+	Line       int        `json:"line,omitempty"`
+	Deprecated bool       `json:"deprecated,omitempty"`
+	Constants  []Constant `json:"constants,omitempty"`
+	Variables  []Variable `json:"variables,omitempty"`
+	Functions  []Function `json:"funcs,omitempty"`
+	Methods    []Function `json:"methods,omitempty"`
+	Examples   []Example  `json:"examples,omitempty"`
 }
 
 // Example represents a runnable example

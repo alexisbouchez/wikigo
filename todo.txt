@@ -84,7 +84,7 @@
 - [ ] Symbol search across all indexed packages
 - [ ] Package comparison view
 - [ ] API diff between versions
-- [ ] Deprecation notices/warnings
+- [x] Deprecation notices/warnings
 - [ ] Build constraints/platform tags display
 
 ## Infrastructure

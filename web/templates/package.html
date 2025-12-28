@@ -211,9 +211,10 @@
             <section class="Documentation" id="pkg-functions">
                 <h2 class="Documentation-title">Functions</h2>
                 {{range .Pkg.Functions}}
-                <div class="Documentation-function" id="{{.Name}}">
+                <div class="Documentation-function{{if .Deprecated}} is-deprecated{{end}}" id="{{.Name}}">
                     <h3 class="Documentation-functionHeader">
                         <a href="#{{.Name}}" class="Documentation-idLink">func {{.Name}}</a>
+                        {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
                         <a class="Documentation-source" href="{{sourceLink $.Pkg.ImportPath .Filename .Line}}" target="_blank">View Source</a>
                     </h3>
                     <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
@@ -255,9 +256,10 @@
                 <h2 class="Documentation-title">Types</h2>
                 {{range .Pkg.Types}}
                 {{$typeName := .Name}}
-                <div class="Documentation-type" id="{{.Name}}">
+                <div class="Documentation-type{{if .Deprecated}} is-deprecated{{end}}" id="{{.Name}}">
                     <h3 class="Documentation-typeHeader">
                         <a href="#{{.Name}}" class="Documentation-idLink">type {{.Name}}</a>
+                        {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
                         <a class="Documentation-source" href="{{sourceLink $.Pkg.ImportPath .Filename .Line}}" target="_blank">View Source</a>
                     </h3>
                     <pre class="Documentation-declaration"><code class="language-go">{{.Decl}}</code></pre>
@@ -313,9 +315,10 @@
                     {{end}}
 
                     {{range .Functions}}
-                    <div class="Documentation-function" id="{{.Name}}">
+                    <div class="Documentation-function{{if .Deprecated}} is-deprecated{{end}}" id="{{.Name}}">
                         <h4 class="Documentation-functionHeader">
                             <a href="#{{.Name}}" class="Documentation-idLink">func {{.Name}}</a>
+                            {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
                         </h4>
                         <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
                         {{if .Doc}}
@@ -349,9 +352,10 @@
                     {{end}}
 
                     {{range .Methods}}
-                    <div class="Documentation-function" id="{{$typeName}}.{{.Name}}">
+                    <div class="Documentation-function{{if .Deprecated}} is-deprecated{{end}}" id="{{$typeName}}.{{.Name}}">
                         <h4 class="Documentation-functionHeader">
                             <a href="#{{$typeName}}.{{.Name}}" class="Documentation-idLink">func ({{.Recv}}) {{.Name}}</a>
+                            {{if .Deprecated}}<span class="DeprecatedBadge">Deprecated</span>{{end}}
                         </h4>
                         <pre class="Documentation-signature"><code class="language-go">{{.Signature}}</code></pre>
                         {{if .Doc}}

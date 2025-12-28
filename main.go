@@ -51,27 +51,29 @@ type Variable struct {
 
 // Function represents a documented function
 type Function struct {
-	Name      string    `json:"name"`
-	Doc       string    `json:"doc"`
-	Signature string    `json:"signature"`
-	Recv      string    `json:"recv,omitempty"`
-	Filename  string    `json:"filename,omitempty"`
-	Line      int       `json:"line,omitempty"`
-	Examples  []Example `json:"examples,omitempty"`
+	Name       string    `json:"name"`
+	Doc        string    `json:"doc"`
+	Signature  string    `json:"signature"`
+	Recv       string    `json:"recv,omitempty"`
+	Filename   string    `json:"filename,omitempty"`
+	Line       int       `json:"line,omitempty"`
+	Deprecated bool      `json:"deprecated,omitempty"`
+	Examples   []Example `json:"examples,omitempty"`
 }
 
 // Type represents a documented type
 type Type struct {
-	Name      string     `json:"name"`
-	Doc       string     `json:"doc"`
-	Decl      string     `json:"decl"`
-	Filename  string     `json:"filename,omitempty"`
-	Line      int        `json:"line,omitempty"`
-	Constants []Constant `json:"constants,omitempty"`
-	Variables []Variable `json:"variables,omitempty"`
-	Functions []Function `json:"funcs,omitempty"`
-	Methods   []Function `json:"methods,omitempty"`
-	Examples  []Example  `json:"examples,omitempty"`
+	Name       string     `json:"name"`
+	Doc        string     `json:"doc"`
+	Decl       string     `json:"decl"`
+	Filename   string     `json:"filename,omitempty"`
+	Line       int        `json:"line,omitempty"`
+	Deprecated bool       `json:"deprecated,omitempty"`
+	Constants  []Constant `json:"constants,omitempty"`
+	Variables  []Variable `json:"variables,omitempty"`
+	Functions  []Function `json:"funcs,omitempty"`
+	Methods    []Function `json:"methods,omitempty"`
+	Examples   []Example  `json:"examples,omitempty"`
 }
 
 // Example represents a runnable example
@@ -246,11 +248,12 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	for _, f := range docPkg.Funcs {
 		pos := fset.Position(f.Decl.Pos())
 		fn := Function{
-			Name:      f.Name,
-			Doc:       f.Doc,
-			Signature: formatFuncSignature(f.Decl),
-			Filename:  filepath.Base(pos.Filename),
-			Line:      pos.Line,
+			Name:       f.Name,
+			Doc:        f.Doc,
+			Signature:  formatFuncSignature(f.Decl),
+			Filename:   filepath.Base(pos.Filename),
+			Line:       pos.Line,
+			Deprecated: isDeprecated(f.Doc),
 		}
 		fn.Examples = findExamples(examples, f.Name, fset)
 		result.Functions = append(result.Functions, fn)
@@ -260,11 +263,12 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	for _, t := range docPkg.Types {
 		typePos := fset.Position(t.Decl.Pos())
 		typ := Type{
-			Name:     t.Name,
-			Doc:      t.Doc,
-			Decl:     formatDecl(fset, t.Decl),
-			Filename: filepath.Base(typePos.Filename),
-			Line:     typePos.Line,
+			Name:       t.Name,
+			Doc:        t.Doc,
+			Decl:       formatDecl(fset, t.Decl),
+			Filename:   filepath.Base(typePos.Filename),
+			Line:       typePos.Line,
+			Deprecated: isDeprecated(t.Doc),
 		}
 
 		// Type-associated constants
@@ -289,11 +293,12 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		for _, f := range t.Funcs {
 			pos := fset.Position(f.Decl.Pos())
 			fn := Function{
-				Name:      f.Name,
-				Doc:       f.Doc,
-				Signature: formatFuncSignature(f.Decl),
-				Filename:  filepath.Base(pos.Filename),
-				Line:      pos.Line,
+				Name:       f.Name,
+				Doc:        f.Doc,
+				Signature:  formatFuncSignature(f.Decl),
+				Filename:   filepath.Base(pos.Filename),
+				Line:       pos.Line,
+				Deprecated: isDeprecated(f.Doc),
 			}
 			fn.Examples = findExamples(examples, f.Name, fset)
 			typ.Functions = append(typ.Functions, fn)
@@ -303,12 +308,13 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		for _, m := range t.Methods {
 			pos := fset.Position(m.Decl.Pos())
 			method := Function{
-				Name:      m.Name,
-				Doc:       m.Doc,
-				Signature: formatFuncSignature(m.Decl),
-				Recv:      m.Recv,
-				Filename:  filepath.Base(pos.Filename),
-				Line:      pos.Line,
+				Name:       m.Name,
+				Doc:        m.Doc,
+				Signature:  formatFuncSignature(m.Decl),
+				Recv:       m.Recv,
+				Filename:   filepath.Base(pos.Filename),
+				Line:       pos.Line,
+				Deprecated: isDeprecated(m.Doc),
 			}
 			method.Examples = findExamples(examples, t.Name+"_"+m.Name, fset)
 			typ.Methods = append(typ.Methods, method)
@@ -683,4 +689,15 @@ func moduleToRepoURL(modulePath string) string {
 	}
 
 	return ""
+}
+
+// isDeprecated checks if a doc comment indicates deprecation
+func isDeprecated(doc string) bool {
+	doc = strings.TrimSpace(doc)
+	// Check for "Deprecated:" at start of doc or after paragraph break
+	if strings.HasPrefix(doc, "Deprecated:") {
+		return true
+	}
+	// Also check for "Deprecated:" on its own line
+	return strings.Contains(doc, "\nDeprecated:") || strings.Contains(doc, "\n\nDeprecated:")
 }
