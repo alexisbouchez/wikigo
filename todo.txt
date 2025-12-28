@@ -130,4 +130,64 @@
 - [ ] Add web handler tests
 - [ ] Add rate limiting for API endpoints
 - [ ] Implement search result relevance scoring
-- [ ] Feature flag AI usage (Mistral) to auto-comment uncommented functions
+
+### AI Enhancement Features (Mistral Integration)
+
+#### Core Infrastructure
+- [x] Add Mistral API client with rate limiting
+- [x] Feature flag system (enable/disable AI per feature)
+- [x] Cost tracking and budgeting for API usage
+- [x] Caching layer for AI-generated content
+
+#### Documentation Generation
+- [ ] Auto-generate missing function/method comments
+  - Detect uncommented exported functions
+  - Generate concise doc comments from function signature + body
+  - Store generated comments separately (don't modify source)
+- [ ] Auto-generate missing package synopsis
+  - For packages without synopsis
+  - Use package name + exported symbols to generate
+- [ ] Enhance existing documentation
+  - Detect sparse/unclear documentation
+  - Suggest improvements or expansions
+  - Add examples where missing
+
+#### Search Enhancement
+- [ ] Semantic search using embeddings
+  - Generate embeddings for package descriptions
+  - Allow natural language queries ("find HTTP client libraries")
+  - Hybrid search: FTS + semantic similarity
+- [ ] Query understanding
+  - Interpret vague queries
+  - Suggest related packages
+
+#### Code Examples
+- [ ] Auto-generate usage examples for functions
+  - Simple example showing typical usage
+  - Store in database, show in UI alongside docs
+- [ ] Generate runnable playground links
+  - Create minimal working examples
+  - Auto-populate Go Playground
+
+#### User-Facing Features
+- [ ] AI-powered "Explain this code" button
+  - Explain complex function implementations
+  - Break down type definitions
+  - Clarify method behavior
+- [ ] License summarization
+  - Generate plain-English summaries of licenses
+  - Highlight key terms (attribution, redistribution, etc.)
+- [ ] Documentation translation
+  - Translate docs to other languages
+  - Cache translations per package version
+
+#### Quality & Safety
+- [ ] Hallucination detection
+  - Validate generated content against actual code
+  - Flag suspicious/incorrect generations
+- [ ] Content moderation
+  - Filter inappropriate AI outputs
+  - Human review queue for generated docs
+- [ ] A/B testing framework
+  - Compare AI-generated vs manual docs
+  - Measure user engagement/satisfaction
