@@ -112,14 +112,21 @@
 - [x] Database-backed search (replaces O(n) linear search)
 - [x] Database-backed symbol search (FTS indexes)
 - [x] Extract FindPackage() helper (eliminates code duplication)
+- [x] Pagination for search results (50 results/page)
+- [x] Pagination for symbol search (100 results/page)
+- [x] Pagination for home page (100 packages/page, sorted)
 
 ### Error Handling
 - [x] Fix JSON unmarshal error checks in db.go
 - [x] Add error logging to web handlers
 
+### Code Organization
+- [x] Consolidate duplicate helper functions (util package)
+  - identifyLicense, moduleToRepoURL, isDeprecated
+  - Eliminates 150+ lines of duplicate code
+
 ### Future Improvements
-- [ ] Add pagination to search results
-- [ ] Add pagination to home page package list
 - [ ] Add caching for search results
 - [ ] Add web handler tests
-- [ ] Consolidate duplicate helper functions across packages
+- [ ] Add rate limiting for API endpoints
+- [ ] Implement search result relevance scoring
