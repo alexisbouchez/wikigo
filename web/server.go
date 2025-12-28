@@ -31,6 +31,8 @@ type PackageDoc struct {
 	Repository       string     `json:"repository,omitempty"`
 	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
 	GoVersion        string     `json:"go_version,omitempty"`
+	GOOS             []string   `json:"goos,omitempty"`
+	GOARCH           []string   `json:"goarch,omitempty"`
 	Constants        []Constant `json:"constants"`
 	Variables        []Variable `json:"variables"`
 	Functions        []Function `json:"functions"`

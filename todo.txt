@@ -85,7 +85,7 @@
 - [ ] Package comparison view
 - [ ] API diff between versions
 - [x] Deprecation notices/warnings
-- [ ] Build constraints/platform tags display
+- [x] Build constraints/platform tags display
 
 ## Infrastructure
 

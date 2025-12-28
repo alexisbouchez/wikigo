@@ -37,6 +37,12 @@
             {{if .Pkg.HasValidMod}}
             <span class="Package-validMod" title="Valid go.mod file">Valid go.mod</span>
             {{end}}
+            {{if .Pkg.GOOS}}
+            <span class="Package-platforms" title="Supported platforms">{{join .Pkg.GOOS ", "}}</span>
+            {{end}}
+            {{if .Pkg.GOARCH}}
+            <span class="Package-archs" title="Supported architectures">{{join .Pkg.GOARCH ", "}}</span>
+            {{end}}
             <a href="https://pkg.go.dev/about#best-practices" target="_blank" class="Package-bestPractices" title="Learn more">Learn more</a>
             {{if .Pkg.Imports}}
             <a href="/imports/{{.Pkg.ImportPath}}" class="Package-imports" title="View all imports">

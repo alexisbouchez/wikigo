@@ -27,6 +27,8 @@ type PackageDoc struct {
 	Repository       string     `json:"repository,omitempty"`
 	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
 	GoVersion        string     `json:"go_version,omitempty"`
+	GOOS             []string   `json:"goos,omitempty"`
+	GOARCH           []string   `json:"goarch,omitempty"`
 	Constants        []Constant `json:"constants"`
 	Variables        []Variable `json:"variables"`
 	Functions        []Function `json:"functions"`
@@ -222,6 +224,11 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		GoVersion:       goVersion,
 		Filenames:       filenames,
 	}
+
+	// Extract build constraints from filenames
+	goos, goarch := extractBuildConstraints(filenames)
+	result.GOOS = goos
+	result.GOARCH = goarch
 
 	// Extract imports
 	for imp := range pkg.Imports {
@@ -703,4 +710,47 @@ func isDeprecated(doc string) bool {
 	}
 	// Also check for "Deprecated:" on its own line
 	return strings.Contains(doc, "\nDeprecated:") || strings.Contains(doc, "\n\nDeprecated:")
+}
+
+// extractBuildConstraints extracts GOOS and GOARCH from filenames
+func extractBuildConstraints(filenames []string) (goos []string, goarch []string) {
+	validGOOS := map[string]bool{
+		"aix": true, "android": true, "darwin": true, "dragonfly": true,
+		"freebsd": true, "illumos": true, "ios": true, "js": true,
+		"linux": true, "netbsd": true, "openbsd": true, "plan9": true,
+		"solaris": true, "wasip1": true, "windows": true,
+	}
+	validGOARCH := map[string]bool{
+		"386": true, "amd64": true, "arm": true, "arm64": true,
+		"loong64": true, "mips": true, "mips64": true, "mips64le": true,
+		"mipsle": true, "ppc64": true, "ppc64le": true, "riscv64": true,
+		"s390x": true, "wasm": true,
+	}
+
+	goosSet := make(map[string]bool)
+	goarchSet := make(map[string]bool)
+
+	for _, filename := range filenames {
+		base := filepath.Base(filename)
+		base = strings.TrimSuffix(base, ".go")
+
+		parts := strings.Split(base, "_")
+		for _, part := range parts {
+			if validGOOS[part] {
+				goosSet[part] = true
+			}
+			if validGOARCH[part] {
+				goarchSet[part] = true
+			}
+		}
+	}
+
+	for os := range goosSet {
+		goos = append(goos, os)
+	}
+	for arch := range goarchSet {
+		goarch = append(goarch, arch)
+	}
+
+	return goos, goarch
 }
