@@ -294,6 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
         pre.appendChild(button);
     });
 
+    // Lazy loading for large packages
+    initLazyLoading();
+
     // Search form enhancement with autocomplete
     const searchInput = document.querySelector('.SearchForm-input');
     if (searchInput) {
@@ -403,6 +406,59 @@ function updateSelection(items, index) {
 function isInputFocused() {
     const tag = document.activeElement?.tagName;
     return tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
+}
+
+// Lazy loading for large packages
+function initLazyLoading() {
+    const INITIAL_SHOW = 10;
+
+    // Apply to functions section
+    const functionsSection = document.querySelector('#pkg-functions');
+    if (functionsSection) {
+        const functions = functionsSection.querySelectorAll('.Documentation-function');
+        applyLazyLoad(functions, functionsSection, 'functions');
+    }
+
+    // Apply to types section (each type's methods)
+    document.querySelectorAll('.Documentation-type').forEach(typeSection => {
+        const methods = typeSection.querySelectorAll('.Documentation-function');
+        if (methods.length > INITIAL_SHOW) {
+            applyLazyLoad(methods, typeSection, 'methods');
+        }
+    });
+
+    function applyLazyLoad(items, container, label) {
+        if (items.length <= INITIAL_SHOW) return;
+
+        const hiddenItems = [];
+        items.forEach((item, index) => {
+            if (index >= INITIAL_SHOW) {
+                item.classList.add('lazy-hidden');
+                item.style.display = 'none';
+                hiddenItems.push(item);
+            }
+        });
+
+        const showMoreBtn = document.createElement('button');
+        showMoreBtn.className = 'ShowMore-button';
+        showMoreBtn.innerHTML = `Show ${hiddenItems.length} more ${label} <span class="ShowMore-icon">▼</span>`;
+
+        let expanded = false;
+        showMoreBtn.addEventListener('click', () => {
+            expanded = !expanded;
+            hiddenItems.forEach(item => {
+                item.style.display = expanded ? '' : 'none';
+            });
+            if (expanded) {
+                showMoreBtn.innerHTML = `Show fewer ${label} <span class="ShowMore-icon">▲</span>`;
+            } else {
+                showMoreBtn.innerHTML = `Show ${hiddenItems.length} more ${label} <span class="ShowMore-icon">▼</span>`;
+            }
+        });
+
+        // Insert button after the last visible item
+        items[INITIAL_SHOW - 1].after(showMoreBtn);
+    }
 }
 
 // In-page symbol search with type filters
@@ -612,6 +668,28 @@ style.textContent = `
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    .ShowMore-button {
+        display: block;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
+        font-size: 0.875rem;
+        color: var(--color-link);
+        background: var(--color-background-secondary);
+        border: 1px dashed var(--color-border);
+        border-radius: 0.5rem;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .ShowMore-button:hover {
+        background: var(--color-border);
+        border-style: solid;
+    }
+    .ShowMore-icon {
+        font-size: 0.75rem;
+        margin-left: 0.25rem;
     }
 `;
 document.head.appendChild(style);

@@ -73,7 +73,7 @@
 - [x] Module page (go.mod info)
 
 ### Performance & Polish
-- [ ] Lazy loading for large packages
+- [x] Lazy loading for large packages
 - [x] Anchor link highlight animation
 - [x] Smooth scroll behavior
 - [x] Print-friendly stylesheet
