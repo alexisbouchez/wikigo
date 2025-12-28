@@ -1,0 +1,30 @@
+{{template "header" .}}
+<div class="Container">
+    <nav class="Breadcrumb">
+        <a href="/">Packages</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span class="Breadcrumb-current">License</span>
+    </nav>
+
+    <div class="License">
+        <h1 class="License-title">License</h1>
+
+        <div class="License-meta">
+            <span class="License-type">{{.Pkg.License}}</span>
+            {{if .Pkg.Redistributable}}
+            <span class="License-redistributable">Redistributable</span>
+            {{end}}
+        </div>
+
+        <div class="License-content">
+            <pre class="License-text">{{.Pkg.LicenseText}}</pre>
+        </div>
+
+        <div class="License-back">
+            <a href="/{{.Pkg.ImportPath}}">&larr; Back to {{.Pkg.Name}} package</a>
+        </div>
+    </div>
+</div>
+{{template "footer" .}}

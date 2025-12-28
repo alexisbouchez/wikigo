@@ -66,7 +66,7 @@
 - [x] Search result highlighting
 
 ### Additional Pages
-- [ ] License full text page
+- [x] License full text page
 - [ ] Imports list page
 - [ ] Imported by page (paginated)
 - [ ] Package versions list page

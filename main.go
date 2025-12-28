@@ -22,6 +22,7 @@ type PackageDoc struct {
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
 	License          string     `json:"license,omitempty"`
+	LicenseText      string     `json:"license_text,omitempty"`
 	Redistributable  bool       `json:"redistributable,omitempty"`
 	Repository       string     `json:"repository,omitempty"`
 	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
@@ -199,7 +200,7 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	}
 
 	// Detect license
-	license := detectLicense(pkgDir)
+	license, licenseText := detectLicense(pkgDir)
 
 	// Detect repository
 	repository := detectRepository(pkgPath, pkgDir)
@@ -214,6 +215,7 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		Doc:             docPkg.Doc,
 		Synopsis:        doc.Synopsis(docPkg.Doc),
 		License:         license,
+		LicenseText:     licenseText,
 		Redistributable: isRedistributable(license),
 		Repository:      repository,
 		HasValidMod:     hasValidMod,
@@ -510,13 +512,13 @@ func findExamples(examples []*doc.Example, name string, fset *token.FileSet) []E
 }
 
 // detectLicense looks for a license file and identifies the license type
-func detectLicense(dir string) string {
+func detectLicense(dir string) (licenseType string, licenseText string) {
 	// Walk up directories to find LICENSE file (for module root)
 	currentDir := dir
 	for i := 0; i < 10; i++ { // Limit depth
-		license := findLicenseInDir(currentDir)
-		if license != "" {
-			return license
+		licenseType, licenseText = findLicenseInDir(currentDir)
+		if licenseType != "" {
+			return licenseType, licenseText
 		}
 		parent := filepath.Dir(currentDir)
 		if parent == currentDir {
@@ -524,10 +526,10 @@ func detectLicense(dir string) string {
 		}
 		currentDir = parent
 	}
-	return ""
+	return "", ""
 }
 
-func findLicenseInDir(dir string) string {
+func findLicenseInDir(dir string) (licenseType string, licenseText string) {
 	licenseFiles := []string{
 		"LICENSE", "LICENSE.txt", "LICENSE.md",
 		"LICENCE", "LICENCE.txt", "LICENCE.md",
@@ -540,9 +542,10 @@ func findLicenseInDir(dir string) string {
 		if err != nil {
 			continue
 		}
-		return identifyLicense(string(content))
+		text := string(content)
+		return identifyLicense(text), text
 	}
-	return ""
+	return "", ""
 }
 
 func identifyLicense(content string) string {

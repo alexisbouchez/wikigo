@@ -26,6 +26,7 @@ type PackageDoc struct {
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
 	License          string     `json:"license,omitempty"`
+	LicenseText      string     `json:"license_text,omitempty"`
 	Redistributable  bool       `json:"redistributable,omitempty"`
 	Repository       string     `json:"repository,omitempty"`
 	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
@@ -185,6 +186,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/search", s.handleSearch)
 	mux.HandleFunc("/api/", s.handleAPI)
 	mux.HandleFunc("/badge/", s.handleBadge)
+	mux.HandleFunc("/license/", s.handleLicense)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -473,6 +475,47 @@ func (s *Server) handleBadge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(badge)
+}
+
+// handleLicense handles the license full text page
+func (s *Server) handleLicense(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/license/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok || pkg.LicenseText == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		Pkg         *PackageDoc
+	}{
+		Title:       "License - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery: "",
+		Pkg:         pkg,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "license.html", data); err != nil {
+		log.Printf("Error rendering license: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // Template helper functions

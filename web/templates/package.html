@@ -22,7 +22,11 @@
         </div>
         <div class="Package-meta">
             {{if .Pkg.License}}
+            {{if .Pkg.LicenseText}}
+            <a href="/license/{{.Pkg.ImportPath}}" class="Package-license" title="View license">{{.Pkg.License}}</a>
+            {{else}}
             <span class="Package-license" title="License">{{.Pkg.License}}</span>
+            {{end}}
             {{end}}
             {{if .Pkg.Redistributable}}
             <span class="Package-redistributable" title="Redistributable license">Redistributable</span>
