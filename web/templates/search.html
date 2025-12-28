@@ -7,14 +7,15 @@
         <p class="Search-count">{{len .Results}} package{{if gt (len .Results) 1}}s{{end}} found</p>
 
         <div class="SearchResults">
+            {{$query := .Query}}
             {{range .Results}}
             <div class="SearchResult">
                 <h2 class="SearchResult-title">
-                    <a href="/{{.ImportPath}}">{{.ImportPath}}</a>
+                    <a href="/{{.ImportPath}}">{{highlightQuery .ImportPath $query}}</a>
                 </h2>
-                <p class="SearchResult-synopsis">{{.Synopsis}}</p>
+                <p class="SearchResult-synopsis">{{highlightQuery .Synopsis $query}}</p>
                 <div class="SearchResult-meta">
-                    <span class="SearchResult-package">package {{.Name}}</span>
+                    <span class="SearchResult-package">package {{highlightQuery .Name $query}}</span>
                 </div>
             </div>
             {{end}}

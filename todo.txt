@@ -63,7 +63,7 @@
 - [x] Search within package (symbols, docs)
 - [ ] Search suggestions/autocomplete
 - [ ] Filter by type (functions, types, methods)
-- [ ] Search result highlighting
+- [x] Search result highlighting
 
 ### Additional Pages
 - [ ] License full text page

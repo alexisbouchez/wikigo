@@ -109,19 +109,20 @@ func NewServer(dataDir string) (*Server, error) {
 
 	// Parse templates
 	funcMap := template.FuncMap{
-		"formatDoc":     formatDoc,
-		"formatDocHTML": formatDocHTML,
-		"shortDoc":      shortDoc,
-		"baseName":      filepath.Base,
-		"hasPrefix":     strings.HasPrefix,
-		"trimPrefix":    strings.TrimPrefix,
-		"join":          strings.Join,
-		"lower":         strings.ToLower,
-		"anchorName":    anchorName,
-		"sourceLink":    sourceLink,
-		"split":         strings.Split,
-		"sub":           func(a, b int) int { return a - b },
-		"cond":          func(cond bool, t, f string) string { if cond { return t }; return f },
+		"formatDoc":      formatDoc,
+		"formatDocHTML":  formatDocHTML,
+		"shortDoc":       shortDoc,
+		"baseName":       filepath.Base,
+		"hasPrefix":      strings.HasPrefix,
+		"trimPrefix":     strings.TrimPrefix,
+		"join":           strings.Join,
+		"lower":          strings.ToLower,
+		"anchorName":     anchorName,
+		"sourceLink":     sourceLink,
+		"split":          strings.Split,
+		"sub":            func(a, b int) int { return a - b },
+		"cond":           func(cond bool, t, f string) string { if cond { return t }; return f },
+		"highlightQuery": highlightQuery,
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templatesFS, "templates/*.html")
@@ -749,4 +750,29 @@ func sourceLink(importPath, filename string, line int) string {
 	}
 	// For third-party packages, link to pkg.go.dev
 	return "https://pkg.go.dev/" + importPath + "#section-sourcefiles"
+}
+
+func highlightQuery(text, query string) template.HTML {
+	if query == "" {
+		return template.HTML(template.HTMLEscapeString(text))
+	}
+	escaped := template.HTMLEscapeString(text)
+	queryLower := strings.ToLower(query)
+	textLower := strings.ToLower(escaped)
+
+	var result strings.Builder
+	i := 0
+	for i < len(escaped) {
+		idx := strings.Index(textLower[i:], queryLower)
+		if idx == -1 {
+			result.WriteString(escaped[i:])
+			break
+		}
+		result.WriteString(escaped[i : i+idx])
+		result.WriteString("<mark>")
+		result.WriteString(escaped[i+idx : i+idx+len(query)])
+		result.WriteString("</mark>")
+		i = i + idx + len(query)
+	}
+	return template.HTML(result.String())
 }
