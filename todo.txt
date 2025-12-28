@@ -80,7 +80,7 @@
 - [x] SEO meta tags (og:image, description, etc.)
 
 ### Advanced Features
-- [ ] Go Playground embed for runnable examples
+- [x] Go Playground embed for runnable examples
 - [ ] Symbol search across all indexed packages
 - [ ] Package comparison view
 - [ ] API diff between versions

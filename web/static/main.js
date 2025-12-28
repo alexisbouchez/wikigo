@@ -31,35 +31,68 @@ function runInPlayground(btn) {
         code = 'package main\n\nimport "fmt"\n\nfunc main() {\n' + code + '\n}';
     }
 
-    // Create form and submit to playground
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'https://go.dev/play/share';
-    form.target = '_blank';
+    // Check if embed already exists
+    let embedContainer = exampleBody.querySelector('.PlaygroundEmbed');
+    if (embedContainer) {
+        // Toggle visibility
+        embedContainer.style.display = embedContainer.style.display === 'none' ? 'block' : 'none';
+        btn.textContent = embedContainer.style.display === 'none' ? 'Run' : 'Hide';
+        return;
+    }
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'body';
-    input.value = code;
-    form.appendChild(input);
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
 
-    document.body.appendChild(form);
-
-    // Use fetch to get share ID, then open in playground
+    // Use fetch to get share ID, then create embed
     fetch('https://go.dev/_/share', {
         method: 'POST',
         body: code,
     })
     .then(response => response.text())
     .then(shareId => {
-        window.open('https://go.dev/play/p/' + shareId, '_blank');
+        // Create embed container
+        embedContainer = document.createElement('div');
+        embedContainer.className = 'PlaygroundEmbed';
+
+        // Create iframe for the playground
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://go.dev/play/p/${shareId}?v=gotip`;
+        iframe.className = 'PlaygroundEmbed-iframe';
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups');
+
+        // Add close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'PlaygroundEmbed-close';
+        closeBtn.textContent = 'Close';
+        closeBtn.onclick = () => {
+            embedContainer.style.display = 'none';
+            btn.textContent = 'Run';
+        };
+
+        // Add open in new tab link
+        const openLink = document.createElement('a');
+        openLink.href = `https://go.dev/play/p/${shareId}`;
+        openLink.target = '_blank';
+        openLink.className = 'PlaygroundEmbed-open';
+        openLink.textContent = 'Open in new tab';
+
+        const controls = document.createElement('div');
+        controls.className = 'PlaygroundEmbed-controls';
+        controls.appendChild(openLink);
+        controls.appendChild(closeBtn);
+
+        embedContainer.appendChild(controls);
+        embedContainer.appendChild(iframe);
+        exampleBody.appendChild(embedContainer);
+
+        btn.textContent = 'Hide';
+        btn.disabled = false;
     })
     .catch(() => {
-        // Fallback: open playground with code in URL (limited)
+        // Fallback: open playground in new tab
         window.open('https://go.dev/play/', '_blank');
-    })
-    .finally(() => {
-        form.remove();
+        btn.textContent = 'Run';
+        btn.disabled = false;
     });
 }
 
@@ -690,6 +723,42 @@ style.textContent = `
     .ShowMore-icon {
         font-size: 0.75rem;
         margin-left: 0.25rem;
+    }
+    .PlaygroundEmbed {
+        margin-top: 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    .PlaygroundEmbed-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: var(--color-background-secondary);
+        border-bottom: 1px solid var(--color-border);
+    }
+    .PlaygroundEmbed-open {
+        font-size: 0.875rem;
+        color: var(--color-link);
+    }
+    .PlaygroundEmbed-close {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        background: var(--color-background);
+        border: 1px solid var(--color-border);
+        border-radius: 0.25rem;
+        cursor: pointer;
+    }
+    .PlaygroundEmbed-close:hover {
+        background: var(--color-border);
+    }
+    .PlaygroundEmbed-iframe {
+        width: 100%;
+        height: 400px;
+        border: none;
+        background: #fff;
     }
 `;
 document.head.appendChild(style);
