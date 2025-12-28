@@ -2,6 +2,8 @@ package crawler
 
 import (
 	"testing"
+
+	"github.com/alexisbouchez/wikigo/util"
 )
 
 func TestIsTaggedVersion(t *testing.T) {
@@ -117,9 +119,9 @@ func TestIsDeprecated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isDeprecated(tt.doc)
+			got := util.IsDeprecated(tt.doc)
 			if got != tt.want {
-				t.Errorf("isDeprecated() = %v, want %v", got, tt.want)
+				t.Errorf("util.IsDeprecated() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -148,9 +150,9 @@ func TestIsRedistributable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isRedistributable(tt.license)
+			got := util.IsRedistributable(tt.license)
 			if got != tt.want {
-				t.Errorf("isRedistributable(%q) = %v, want %v", tt.license, got, tt.want)
+				t.Errorf("util.IsRedistributable(%q) = %v, want %v", tt.license, got, tt.want)
 			}
 		})
 	}
@@ -236,9 +238,9 @@ func TestIdentifyLicense(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := identifyLicense(tt.content)
+			got := util.IdentifyLicense(tt.content)
 			if got != tt.want {
-				t.Errorf("identifyLicense() = %v, want %v", got, tt.want)
+				t.Errorf("util.IdentifyLicense() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -314,9 +316,9 @@ func TestModuleToRepoURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := moduleToRepoURL(tt.modulePath)
+			got := util.ModuleToRepoURL(tt.modulePath)
 			if got != tt.want {
-				t.Errorf("moduleToRepoURL(%q) = %v, want %v", tt.modulePath, got, tt.want)
+				t.Errorf("util.ModuleToRepoURL(%q) = %v, want %v", tt.modulePath, got, tt.want)
 			}
 		})
 	}
@@ -337,10 +339,10 @@ func TestModuleToRepoURL_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.modulePath, func(t *testing.T) {
-			got := moduleToRepoURL(tt.modulePath)
+			got := util.ModuleToRepoURL(tt.modulePath)
 			isEmpty := got == ""
 			if isEmpty != tt.wantEmpty {
-				t.Errorf("moduleToRepoURL(%q) isEmpty=%v, want isEmpty=%v (got %q)",
+				t.Errorf("util.ModuleToRepoURL(%q) isEmpty=%v, want isEmpty=%v (got %q)",
 					tt.modulePath, isEmpty, tt.wantEmpty, got)
 			}
 		})

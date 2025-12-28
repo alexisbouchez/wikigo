@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexisbouchez/wikigo/util"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -584,55 +585,14 @@ func findLicenseInDir(dir string) (licenseType string, licenseText string) {
 	return "", ""
 }
 
+// Deprecated: Use util.IdentifyLicense instead
 func identifyLicense(content string) string {
-	content = strings.ToLower(content)
-
-	// Check for common license patterns
-	switch {
-	case strings.Contains(content, "apache license") && strings.Contains(content, "version 2.0"):
-		return "Apache-2.0"
-	case strings.Contains(content, "mit license") || strings.Contains(content, "permission is hereby granted, free of charge"):
-		return "MIT"
-	case strings.Contains(content, "bsd 3-clause") || (strings.Contains(content, "redistribution and use") && strings.Contains(content, "neither the name")):
-		return "BSD-3-Clause"
-	case strings.Contains(content, "bsd 2-clause") || (strings.Contains(content, "redistribution and use") && !strings.Contains(content, "neither the name") && !strings.Contains(content, "advertising")):
-		return "BSD-2-Clause"
-	case strings.Contains(content, "gnu general public license") && strings.Contains(content, "version 3"):
-		return "GPL-3.0"
-	case strings.Contains(content, "gnu general public license") && strings.Contains(content, "version 2"):
-		return "GPL-2.0"
-	case strings.Contains(content, "gnu lesser general public license"):
-		return "LGPL"
-	case strings.Contains(content, "mozilla public license") && strings.Contains(content, "2.0"):
-		return "MPL-2.0"
-	case strings.Contains(content, "unlicense") || strings.Contains(content, "this is free and unencumbered"):
-		return "Unlicense"
-	case strings.Contains(content, "isc license"):
-		return "ISC"
-	case strings.Contains(content, "creative commons"):
-		if strings.Contains(content, "cc0") {
-			return "CC0-1.0"
-		}
-		return "CC"
-	}
-
-	return "Unknown"
+	return util.IdentifyLicense(content)
 }
 
-// isRedistributable checks if a license allows redistribution
+// Deprecated: Use util.IsRedistributable instead
 func isRedistributable(license string) bool {
-	redistributable := map[string]bool{
-		"MIT":          true,
-		"Apache-2.0":   true,
-		"BSD-2-Clause": true,
-		"BSD-3-Clause": true,
-		"ISC":          true,
-		"MPL-2.0":      true,
-		"Unlicense":    true,
-		"CC0-1.0":      true,
-		"LGPL":         true,
-	}
-	return redistributable[license]
+	return util.IsRedistributable(license)
 }
 
 // detectGoMod checks for a valid go.mod and extracts Go version, module path, and content
@@ -699,46 +659,14 @@ func findModulePath(dir string) string {
 	return ""
 }
 
+// Deprecated: Use util.ModuleToRepoURL instead
 func moduleToRepoURL(modulePath string) string {
-	// Handle common hosting services
-	parts := strings.Split(modulePath, "/")
-	if len(parts) < 2 {
-		return ""
-	}
-
-	host := parts[0]
-	switch {
-	case host == "github.com" && len(parts) >= 3:
-		return "https://github.com/" + parts[1] + "/" + parts[2]
-	case host == "gitlab.com" && len(parts) >= 3:
-		return "https://gitlab.com/" + parts[1] + "/" + parts[2]
-	case host == "bitbucket.org" && len(parts) >= 3:
-		return "https://bitbucket.org/" + parts[1] + "/" + parts[2]
-	case strings.HasPrefix(host, "go.googlesource.com"):
-		return "https://go.googlesource.com/" + parts[1]
-	case host == "golang.org" && len(parts) >= 2 && parts[1] == "x":
-		if len(parts) >= 3 {
-			return "https://go.googlesource.com/" + parts[2]
-		}
-	case strings.Contains(host, "."):
-		// Generic: assume https://host/path
-		if len(parts) >= 3 {
-			return "https://" + parts[0] + "/" + parts[1] + "/" + parts[2]
-		}
-	}
-
-	return ""
+	return util.ModuleToRepoURL(modulePath)
 }
 
-// isDeprecated checks if a doc comment indicates deprecation
+// Deprecated: Use util.IsDeprecated instead
 func isDeprecated(doc string) bool {
-	doc = strings.TrimSpace(doc)
-	// Check for "Deprecated:" at start of doc or after paragraph break
-	if strings.HasPrefix(doc, "Deprecated:") {
-		return true
-	}
-	// Also check for "Deprecated:" on its own line
-	return strings.Contains(doc, "\nDeprecated:") || strings.Contains(doc, "\n\nDeprecated:")
+	return util.IsDeprecated(doc)
 }
 
 // extractBuildConstraints extracts GOOS and GOARCH from filenames
