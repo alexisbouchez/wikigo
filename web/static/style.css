@@ -3,32 +3,49 @@
     box-sizing: border-box;
 }
 
+/* Gruvbox High Contrast Theme */
 :root {
-    --color-brand: #007d9c;
-    --color-brand-dark: #00add8;
-    --color-text: #202224;
-    --color-text-secondary: #6e7072;
-    --color-background: #fff;
-    --color-background-secondary: #f5f5f5;
-    --color-border: #d6d6d6;
-    --color-link: #007d9c;
-    --color-code-bg: #f7f7f7;
-    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    --font-family-mono: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    /* Gruvbox Light */
+    --color-brand: #d65d0e;
+    --color-brand-dark: #fe8019;
+    --color-text: #3c3836;
+    --color-text-secondary: #665c54;
+    --color-background: #fbf1c7;
+    --color-background-secondary: #ebdbb2;
+    --color-border: #bdae93;
+    --color-link: #076678;
+    --color-code-bg: #ebdbb2;
+    --color-red: #cc241d;
+    --color-green: #98971a;
+    --color-yellow: #d79921;
+    --color-blue: #458588;
+    --color-purple: #b16286;
+    --color-aqua: #689d6a;
+    --color-orange: #d65d0e;
+    --font-family: 'JetBrains Mono', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+    --font-family-mono: 'JetBrains Mono', 'SF Mono', Menlo, Monaco, Consolas, monospace;
     --max-width: 98rem;
     --nav-width: 16.5rem;
 }
 
 [data-theme="dark"] {
-    --color-brand: #00add8;
-    --color-brand-dark: #00d4ff;
-    --color-text: #e1e1e1;
-    --color-text-secondary: #a0a0a0;
-    --color-background: #1a1a1a;
-    --color-background-secondary: #252525;
-    --color-border: #3a3a3a;
-    --color-link: #00add8;
-    --color-code-bg: #2d2d2d;
+    /* Gruvbox Dark Hard Contrast */
+    --color-brand: #fe8019;
+    --color-brand-dark: #d65d0e;
+    --color-text: #ebdbb2;
+    --color-text-secondary: #a89984;
+    --color-background: #1d2021;
+    --color-background-secondary: #282828;
+    --color-border: #504945;
+    --color-link: #83a598;
+    --color-code-bg: #282828;
+    --color-red: #fb4934;
+    --color-green: #b8bb26;
+    --color-yellow: #fabd2f;
+    --color-blue: #83a598;
+    --color-purple: #d3869b;
+    --color-aqua: #8ec07c;
+    --color-orange: #fe8019;
 }
 
 html {
@@ -2351,28 +2368,28 @@ tr.is-retracted .VersionTable-version {
 }
 
 .PackageGrid-icon--go {
-    color: #fff;
-    background: #00add8;
+    color: var(--color-background);
+    background: var(--color-aqua);
 }
 
 .PackageGrid-icon--rust {
-    color: #1a1a1a;
-    background: #dea584;
+    color: var(--color-background);
+    background: var(--color-orange);
 }
 
 .PackageGrid-icon--js {
-    color: #1a1a1a;
-    background: #f7df1e;
+    color: var(--color-background);
+    background: var(--color-yellow);
 }
 
 .PackageGrid-icon--python {
-    color: #fff;
-    background: #3776ab;
+    color: var(--color-background);
+    background: var(--color-blue);
 }
 
 .PackageGrid-icon--php {
-    color: #fff;
-    background: #8892bf;
+    color: var(--color-background);
+    background: var(--color-purple);
 }
 
 .PackageGrid-list {
@@ -2413,9 +2430,9 @@ tr.is-retracted .VersionTable-version {
 
 .PackageCard-version {
     font-size: 0.75rem;
-    font-weight: 500;
-    color: #fff;
-    background: var(--color-brand);
+    font-weight: 600;
+    color: var(--color-background);
+    background: var(--color-green);
     padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
 }
@@ -2446,18 +2463,18 @@ tr.is-retracted .VersionTable-version {
 
 .PackageCard-license {
     font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--color-brand);
-    background: rgba(0, 125, 156, 0.1);
+    font-weight: 600;
+    color: var(--color-background);
+    background: var(--color-purple);
     padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
 }
 
 .PackageCard-downloads {
     font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    background: var(--color-background-secondary);
+    font-weight: 600;
+    color: var(--color-background);
+    background: var(--color-aqua);
     padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
 }

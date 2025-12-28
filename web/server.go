@@ -616,7 +616,7 @@ func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
 		PythonPackages []*db.PythonPackage
 		PHPPackages    []*db.PHPPackage
 	}{
-		Title:          "Package Documentation",
+		Title:          "Wikistral - Package Documentation",
 		SearchQuery:    "",
 		Pkg:            nil,
 		GoPackages:     goPackages,

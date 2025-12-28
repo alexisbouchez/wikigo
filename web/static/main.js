@@ -1,4 +1,4 @@
-// Main JavaScript for wikigo
+// Main JavaScript for Wikistral
 // Note: Theme initialization is in base.html <head> to prevent blink
 
 function toggleTheme() {
@@ -708,24 +708,24 @@ style.textContent = `
         text-transform: uppercase;
     }
     .SearchAutocomplete-lang--go {
-        background: #00add8;
-        color: white;
+        background: #689d6a;
+        color: #1d2021;
     }
     .SearchAutocomplete-lang--rust {
-        background: #dea584;
-        color: #1a1a1a;
+        background: #d65d0e;
+        color: #1d2021;
     }
     .SearchAutocomplete-lang--js {
-        background: #f7df1e;
-        color: #1a1a1a;
+        background: #d79921;
+        color: #1d2021;
     }
     .SearchAutocomplete-lang--python {
-        background: #3776ab;
-        color: white;
+        background: #458588;
+        color: #fbf1c7;
     }
     .SearchAutocomplete-lang--php {
-        background: #8892bf;
-        color: white;
+        background: #b16286;
+        color: #fbf1c7;
     }
     .SearchAutocomplete-path {
         font-family: var(--font-family-mono);

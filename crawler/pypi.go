@@ -22,6 +22,44 @@ const (
 	PyPIRegistryURL = "https://pypi.org/pypi"
 )
 
+// cleanLicense extracts a short license name from the license field or classifiers
+func cleanPyPILicense(license string, classifiers []string) string {
+	// First try to extract from classifiers (more reliable)
+	for _, c := range classifiers {
+		if strings.HasPrefix(c, "License :: OSI Approved :: ") {
+			// Extract license name from classifier
+			name := strings.TrimPrefix(c, "License :: OSI Approved :: ")
+			// Shorten common license names
+			name = strings.TrimSuffix(name, " License")
+			return name
+		}
+	}
+
+	// Fall back to license field, but clean it up
+	if license == "" {
+		return ""
+	}
+
+	// Take only the first line
+	if idx := strings.Index(license, "\n"); idx != -1 {
+		license = strings.TrimSpace(license[:idx])
+	}
+
+	// Truncate if too long (likely full license text)
+	if len(license) > 50 {
+		// Try to find a common license name at the start
+		commonLicenses := []string{"MIT", "BSD", "Apache", "GPL", "LGPL", "MPL", "ISC", "Unlicense"}
+		for _, l := range commonLicenses {
+			if strings.Contains(strings.ToUpper(license), l) {
+				return l
+			}
+		}
+		return license[:50] + "..."
+	}
+
+	return license
+}
+
 // PyPIPackageInfo represents the info section of PyPI JSON API response
 type PyPIPackageInfo struct {
 	Name            string            `json:"name"`
@@ -401,7 +439,7 @@ func (c *PyPICrawler) IndexPackage(name string) error {
 		Summary:          pkg.Info.Summary,
 		Author:           pkg.Info.Author,
 		AuthorEmail:      pkg.Info.AuthorEmail,
-		License:          pkg.Info.License,
+		License:          cleanPyPILicense(pkg.Info.License, pkg.Info.Classifiers),
 		HomePage:         pkg.Info.HomePage,
 		ProjectURL:       pkg.Info.ProjectURL,
 		PyPIURL:          fmt.Sprintf("https://pypi.org/project/%s/", pkg.Info.Name),
