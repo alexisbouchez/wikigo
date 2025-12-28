@@ -55,7 +55,7 @@
 ### Documentation Links
 - [x] RFC references as clickable links (RFC 7231, etc.)
 - [x] URL detection and auto-linking in docs
-- [ ] Cross-package type linking (e.g., io.Reader -> io package)
+- [x] Cross-package type linking (e.g., io.Reader -> io package)
 
 ## Low Priority
 

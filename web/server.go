@@ -454,6 +454,9 @@ func processDocLinks(text string) string {
 	// Process URLs first (before other processing)
 	escaped = autoLinkURLs(escaped)
 
+	// Process cross-package type references (e.g., io.Reader, http.Handler)
+	escaped = linkCrossPackageTypes(escaped)
+
 	// Process [Name] references
 	var result strings.Builder
 	i := 0
@@ -480,6 +483,97 @@ func processDocLinks(text string) string {
 		i++
 	}
 	return result.String()
+}
+
+// linkCrossPackageTypes detects and links cross-package type references
+// like io.Reader, http.Handler, context.Context
+func linkCrossPackageTypes(text string) string {
+	// Standard library packages that are commonly referenced
+	stdPkgs := map[string]bool{
+		"bufio": true, "bytes": true, "context": true, "crypto": true,
+		"encoding": true, "errors": true, "fmt": true, "hash": true,
+		"io": true, "log": true, "math": true, "net": true, "os": true,
+		"path": true, "reflect": true, "regexp": true, "runtime": true,
+		"sort": true, "strconv": true, "strings": true, "sync": true,
+		"syscall": true, "testing": true, "time": true, "unicode": true,
+		"http": true, "url": true, "json": true, "xml": true, "sql": true,
+		"template": true, "exec": true, "filepath": true, "zip": true,
+		"tar": true, "gzip": true, "heap": true, "list": true, "ring": true,
+	}
+
+	var result strings.Builder
+	i := 0
+	for i < len(text) {
+		// Check if we're at a word boundary and have a lowercase letter
+		if i == 0 || !isIdentChar(text[i-1]) {
+			// Try to match pattern: lowercase_identifier.UppercaseIdentifier
+			j := i
+			for j < len(text) && isLowerIdentChar(text[j]) {
+				j++
+			}
+			if j > i && j < len(text) && text[j] == '.' {
+				pkgName := text[i:j]
+				if stdPkgs[pkgName] {
+					k := j + 1
+					// Type name must start with uppercase
+					if k < len(text) && text[k] >= 'A' && text[k] <= 'Z' {
+						for k < len(text) && isIdentChar(text[k]) {
+							k++
+						}
+						typeName := text[j+1 : k]
+						// Build the link
+						pkgPath := getStdPkgPath(pkgName)
+						result.WriteString(`<a href="/`)
+						result.WriteString(pkgPath)
+						result.WriteString(`#`)
+						result.WriteString(typeName)
+						result.WriteString(`" class="TypeLink">`)
+						result.WriteString(pkgName)
+						result.WriteString(".")
+						result.WriteString(typeName)
+						result.WriteString(`</a>`)
+						i = k
+						continue
+					}
+				}
+			}
+		}
+		result.WriteByte(text[i])
+		i++
+	}
+	return result.String()
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+func isLowerIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+// getStdPkgPath returns the full import path for common std lib short names
+func getStdPkgPath(short string) string {
+	paths := map[string]string{
+		"http":     "net/http",
+		"url":      "net/url",
+		"json":     "encoding/json",
+		"xml":      "encoding/xml",
+		"sql":      "database/sql",
+		"template": "text/template",
+		"exec":     "os/exec",
+		"filepath": "path/filepath",
+		"zip":      "archive/zip",
+		"tar":      "archive/tar",
+		"gzip":     "compress/gzip",
+		"heap":     "container/heap",
+		"list":     "container/list",
+		"ring":     "container/ring",
+	}
+	if full, ok := paths[short]; ok {
+		return full
+	}
+	return short
 }
 
 func autoLinkURLs(text string) string {

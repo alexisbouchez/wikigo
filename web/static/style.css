@@ -787,6 +787,16 @@ code {
     color: var(--color-text-secondary);
 }
 
+.TypeLink {
+    color: var(--color-link);
+    font-family: var(--font-family-mono);
+    font-size: 0.95em;
+}
+
+.TypeLink:hover {
+    text-decoration: underline;
+}
+
 .Documentation-signature,
 .Documentation-declaration {
     margin-bottom: 1rem;
