@@ -523,6 +523,17 @@ code {
 .Documentation-type {
     margin-bottom: 2.5rem;
     padding-top: 1rem;
+    transition: background-color 0.5s;
+}
+
+.Documentation-function:target,
+.Documentation-type:target {
+    animation: highlight 2s ease-out;
+}
+
+@keyframes highlight {
+    0% { background-color: rgba(0, 125, 156, 0.15); }
+    100% { background-color: transparent; }
 }
 
 .Documentation-functionHeader,
