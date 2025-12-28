@@ -101,15 +101,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Search form enhancement
     const searchInput = document.querySelector('.SearchForm-input');
     if (searchInput) {
-        // Keyboard shortcut: / to focus search
         document.addEventListener('keydown', (e) => {
-            if (e.key === '/' && document.activeElement !== searchInput) {
+            // / to focus search
+            if (e.key === '/' && !isInputFocused()) {
                 e.preventDefault();
                 searchInput.focus();
+            }
+            // Escape to blur search
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                searchInput.blur();
             }
         });
     }
 });
+
+function isInputFocused() {
+    const tag = document.activeElement?.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
+}
 
 // Add copy button styles
 const style = document.createElement('style');
