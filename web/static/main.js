@@ -19,6 +19,50 @@ function toggleTheme() {
     }
 }
 
+function runInPlayground(btn) {
+    const exampleBody = btn.closest('.Example-body');
+    const codeBlock = exampleBody.querySelector('.Example-code code');
+    if (!codeBlock) return;
+
+    let code = codeBlock.textContent;
+
+    // Wrap in main package if needed
+    if (!code.includes('package ')) {
+        code = 'package main\n\nimport "fmt"\n\nfunc main() {\n' + code + '\n}';
+    }
+
+    // Create form and submit to playground
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'https://go.dev/play/share';
+    form.target = '_blank';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'body';
+    input.value = code;
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+
+    // Use fetch to get share ID, then open in playground
+    fetch('https://go.dev/_/share', {
+        method: 'POST',
+        body: code,
+    })
+    .then(response => response.text())
+    .then(shareId => {
+        window.open('https://go.dev/play/p/' + shareId, '_blank');
+    })
+    .catch(() => {
+        // Fallback: open playground with code in URL (limited)
+        window.open('https://go.dev/play/', '_blank');
+    })
+    .finally(() => {
+        form.remove();
+    });
+}
+
 function showImports() {
     const popup = document.getElementById('importsPopup');
     if (popup) popup.classList.add('open');

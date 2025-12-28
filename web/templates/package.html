@@ -204,6 +204,9 @@
                             <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
                             <div class="Example-body">
                                 {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                <div class="Example-actions">
+                                    <button class="Example-run" onclick="runInPlayground(this)">Run</button>
+                                </div>
                                 <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
                                 {{if .Output}}
                                 <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
@@ -244,6 +247,9 @@
                             <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
                             <div class="Example-body">
                                 {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                <div class="Example-actions">
+                                    <button class="Example-run" onclick="runInPlayground(this)">Run</button>
+                                </div>
                                 <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
                                 {{if .Output}}
                                 <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
@@ -295,6 +301,9 @@
                                 <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
                                 <div class="Example-body">
                                     {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                    <div class="Example-actions">
+                                        <button class="Example-run" onclick="runInPlayground(this)">Run</button>
+                                    </div>
                                     <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
                                     {{if .Output}}
                                     <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
@@ -326,6 +335,9 @@
                                 <summary class="Example-header">Example{{if .Name}} ({{.Name}}){{end}}</summary>
                                 <div class="Example-body">
                                     {{if .Doc}}<p>{{.Doc}}</p>{{end}}
+                                    <div class="Example-actions">
+                                        <button class="Example-run" onclick="runInPlayground(this)">Run</button>
+                                    </div>
                                     <pre class="Example-code"><code class="language-go">{{.Code}}</code></pre>
                                     {{if .Output}}
                                     <pre class="Example-output"><span class="Example-outputLabel">Output:</span>
