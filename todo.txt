@@ -67,7 +67,7 @@
 
 ### Additional Pages
 - [x] License full text page
-- [ ] Imports list page
+- [x] Imports list page
 - [ ] Imported by page (paginated)
 - [ ] Package versions list page
 - [ ] Module page (go.mod info)

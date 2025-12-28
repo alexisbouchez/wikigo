@@ -1,0 +1,37 @@
+{{template "header" .}}
+<div class="Container">
+    <nav class="Breadcrumb">
+        <a href="/">Packages</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span class="Breadcrumb-current">Imports</span>
+    </nav>
+
+    <div class="Imports">
+        <h1 class="Imports-title">Imports</h1>
+        <p class="Imports-count">{{len .Pkg.Imports}} imports</p>
+
+        {{if .ImportGroups}}
+        {{range .ImportGroups}}
+        <section class="Imports-section">
+            <h2 class="Imports-sectionTitle">{{.Name}} ({{len .Imports}})</h2>
+            <ul class="Imports-list">
+                {{range .Imports}}
+                <li><a href="/{{.}}">{{.}}</a></li>
+                {{end}}
+            </ul>
+        </section>
+        {{end}}
+        {{else}}
+        <div class="EmptyState">
+            <p>This package has no imports.</p>
+        </div>
+        {{end}}
+
+        <div class="Imports-back">
+            <a href="/{{.Pkg.ImportPath}}">&larr; Back to {{.Pkg.Name}} package</a>
+        </div>
+    </div>
+</div>
+{{template "footer" .}}

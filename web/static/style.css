@@ -1137,6 +1137,63 @@ code {
     color: var(--color-link);
 }
 
+/* Imports Page */
+.Imports {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.Imports-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.Imports-count {
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+}
+
+.Imports-section {
+    margin-bottom: 2rem;
+}
+
+.Imports-sectionTitle {
+    font-size: 1.125rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Imports-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.5rem;
+}
+
+.Imports-list li {
+    padding: 0.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0.25rem;
+}
+
+.Imports-list a {
+    font-family: var(--font-family-mono);
+    font-size: 0.875rem;
+}
+
+.Imports-back {
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.Imports-back a {
+    color: var(--color-link);
+}
+
 /* Footer */
 .Footer {
     margin-top: 3rem;

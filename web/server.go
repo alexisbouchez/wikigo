@@ -187,6 +187,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/", s.handleAPI)
 	mux.HandleFunc("/badge/", s.handleBadge)
 	mux.HandleFunc("/license/", s.handleLicense)
+	mux.HandleFunc("/imports/", s.handleImports)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -514,6 +515,72 @@ func (s *Server) handleLicense(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "license.html", data); err != nil {
 		log.Printf("Error rendering license: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleImports handles the imports list page
+func (s *Server) handleImports(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/imports/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Group imports by category
+	type ImportGroup struct {
+		Name    string
+		Imports []string
+	}
+
+	var stdLib, external []string
+	for _, imp := range pkg.Imports {
+		if !strings.Contains(imp, ".") {
+			stdLib = append(stdLib, imp)
+		} else {
+			external = append(external, imp)
+		}
+	}
+
+	var groups []ImportGroup
+	if len(stdLib) > 0 {
+		groups = append(groups, ImportGroup{Name: "Standard Library", Imports: stdLib})
+	}
+	if len(external) > 0 {
+		groups = append(groups, ImportGroup{Name: "External", Imports: external})
+	}
+
+	data := struct {
+		Title        string
+		SearchQuery  string
+		Pkg          *PackageDoc
+		ImportGroups []ImportGroup
+	}{
+		Title:        "Imports - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery:  "",
+		Pkg:          pkg,
+		ImportGroups: groups,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "imports.html", data); err != nil {
+		log.Printf("Error rendering imports: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
