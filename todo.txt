@@ -130,3 +130,4 @@
 - [ ] Add web handler tests
 - [ ] Add rate limiting for API endpoints
 - [ ] Implement search result relevance scoring
+- [ ] Feature flag AI usage (Mistral) to auto-comment uncommented functions
