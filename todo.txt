@@ -232,16 +232,33 @@
   - Union/intersection types
 
 ### NPM Package Support
-- [ ] Crawl npm registry
-  - Fetch package metadata from registry.npmjs.org
+- [x] Crawl npm registry
+  - Fetch package metadata from registry.npmjs.org (crawler/npm.go)
   - Download and extract package tarballs
   - Parse package.json (dependencies, scripts, etc.)
   - Handle scoped packages (@org/package)
+  - Search npm packages
+  - Tests for package fetching
 - [ ] Version tracking
   - Latest, next, beta tags
   - Semver version resolution
   - Deprecation notices
   - Security advisories
+
+### GitHub Repository Support
+- [ ] Crawl GitHub repositories for JS/TS projects
+  - Search GitHub API for JavaScript/TypeScript repos
+  - Clone/download repositories
+  - Detect package.json and parse metadata
+  - Handle monorepos (workspaces, Lerna, Nx)
+  - Parse JS/TS files from repository
+  - Index symbols into database
+- [ ] GitHub-specific metadata
+  - Stars, forks, watchers count
+  - Last commit date, contributors
+  - README.md rendering
+  - Topics/tags for discovery
+  - License detection from LICENSE file
 
 ### Database Schema
 - [ ] Extend database for JS/TS packages
