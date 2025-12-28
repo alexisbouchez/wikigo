@@ -404,6 +404,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/imports/", s.handleImports)
 	mux.HandleFunc("/mod/", s.handleModule)
 	mux.HandleFunc("/versions/", s.handleVersions)
+	mux.HandleFunc("/importedby/", s.handleImportedBy)
 	mux.HandleFunc("/symbols", s.handleSymbolSearch)
 
 	log.Printf("Starting server on %s", addr)
@@ -482,17 +483,20 @@ func (s *Server) getSubdirectories(importPath string) []Subdirectory {
 // renderPackage renders a package documentation page
 func (s *Server) renderPackage(w http.ResponseWriter, r *http.Request, pkg *PackageDoc) {
 	subdirs := s.getSubdirectories(pkg.ImportPath)
+	importedByCount := s.GetImportedByCount(pkg.ImportPath)
 
 	data := struct {
-		Title          string
-		SearchQuery    string
-		Pkg            *PackageDoc
-		Subdirectories []Subdirectory
+		Title           string
+		SearchQuery     string
+		Pkg             *PackageDoc
+		Subdirectories  []Subdirectory
+		ImportedByCount int
 	}{
-		Title:          pkg.Name + " package - " + pkg.ImportPath + " - Go Packages",
-		SearchQuery:    "",
-		Pkg:            pkg,
-		Subdirectories: subdirs,
+		Title:           pkg.Name + " package - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery:     "",
+		Pkg:             pkg,
+		Subdirectories:  subdirs,
+		ImportedByCount: importedByCount,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "package.html", data); err != nil {
@@ -1026,6 +1030,106 @@ func (s *Server) handleVersions(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "versions.html", data); err != nil {
 		log.Printf("Error rendering versions: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// ImportedByPackage represents a package that imports another package
+type ImportedByPackage struct {
+	ImportPath string
+	Name       string
+	Synopsis   string
+	Module     string
+}
+
+// handleImportedBy handles the imported-by list page
+func (s *Server) handleImportedBy(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/importedby/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				path = importPath
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Get pagination params
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if n, err := fmt.Sscanf(p, "%d", &page); err != nil || n != 1 || page < 1 {
+			page = 1
+		}
+	}
+	perPage := 50
+	offset := (page - 1) * perPage
+
+	var importers []ImportedByPackage
+	var total int
+
+	if s.db != nil {
+		// Get from database
+		dbPkgs, count, err := s.db.GetImportedBy(path, perPage, offset)
+		if err != nil {
+			log.Printf("Error getting imported by: %v", err)
+		} else {
+			total = count
+			for _, p := range dbPkgs {
+				importers = append(importers, ImportedByPackage{
+					ImportPath: p.ImportPath,
+					Name:       p.Name,
+					Synopsis:   p.Synopsis,
+					Module:     p.ModulePath,
+				})
+			}
+		}
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		Pkg         *PackageDoc
+		Importers   []ImportedByPackage
+		Total       int
+		Page        int
+		TotalPages  int
+		PerPage     int
+		HasPrev     bool
+		HasNext     bool
+	}{
+		Title:       "Imported By - " + pkg.ImportPath + " - Go Packages",
+		SearchQuery: "",
+		Pkg:         pkg,
+		Importers:   importers,
+		Total:       total,
+		Page:        page,
+		TotalPages:  totalPages,
+		PerPage:     perPage,
+		HasPrev:     page > 1,
+		HasNext:     page < totalPages,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "importedby.html", data); err != nil {
+		log.Printf("Error rendering imported by: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

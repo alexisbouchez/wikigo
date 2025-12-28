@@ -65,6 +65,11 @@
                 Imports: {{len .Pkg.Imports}}
             </a>
             {{end}}
+            {{if .ImportedByCount}}
+            <a href="/importedby/{{.Pkg.ImportPath}}" class="Package-importedBy" title="View packages that import this">
+                Imported by: {{.ImportedByCount}}
+            </a>
+            {{end}}
             {{if .Pkg.Repository}}
             <a href="{{.Pkg.Repository}}" target="_blank" class="Package-repo" title="Repository">Repository</a>
             {{end}}

@@ -1,0 +1,61 @@
+{{template "header" .}}
+<div class="Container">
+    <div class="ImportedBy">
+        <nav class="Breadcrumb">
+            <a href="/">Packages</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <a href="/{{.Pkg.ImportPath}}">{{.Pkg.Name}}</a>
+            <span class="Breadcrumb-divider">&gt;</span>
+            <span class="Breadcrumb-current">Imported By</span>
+        </nav>
+
+        <h1 class="ImportedBy-title">Imported By</h1>
+        <p class="ImportedBy-package">
+            <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
+        </p>
+
+        {{if .Total}}
+        <p class="ImportedBy-count">{{.Total}} package{{if ne .Total 1}}s{{end}} import this package</p>
+
+        <div class="ImportedBy-list">
+            {{range .Importers}}
+            <div class="ImportedBy-item">
+                <div class="ImportedBy-itemHeader">
+                    <a href="/{{.ImportPath}}" class="ImportedBy-itemName">{{.ImportPath}}</a>
+                </div>
+                {{if .Synopsis}}
+                <p class="ImportedBy-itemSynopsis">{{.Synopsis}}</p>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+
+        {{if or .HasPrev .HasNext}}
+        <nav class="Pagination">
+            {{if .HasPrev}}
+            <a href="?page={{sub .Page 1}}" class="Pagination-prev">Previous</a>
+            {{else}}
+            <span class="Pagination-prev is-disabled">Previous</span>
+            {{end}}
+            <span class="Pagination-info">Page {{.Page}} of {{.TotalPages}}</span>
+            {{if .HasNext}}
+            <a href="?page={{sub .Page -1}}" class="Pagination-next">Next</a>
+            {{else}}
+            <span class="Pagination-next is-disabled">Next</span>
+            {{end}}
+        </nav>
+        {{end}}
+
+        {{else}}
+        <div class="EmptyState">
+            <p>No packages in the index import this package yet.</p>
+            <p>Import relationships are tracked when packages are indexed into the database.</p>
+        </div>
+        {{end}}
+
+        <div class="ImportedBy-back">
+            <a href="/{{.Pkg.ImportPath}}">&larr; Back to {{.Pkg.Name}}</a>
+        </div>
+    </div>
+</div>
+{{template "footer" .}}
