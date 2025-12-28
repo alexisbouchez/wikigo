@@ -5,7 +5,7 @@
         {{$parts := split .Pkg.ImportPath "/"}}
         {{$path := ""}}
         {{range $i, $part := $parts}}
-        {{$path = printf "%s%s%s" $path (cond $i "/" "") $part}}
+        {{$path = printf "%s%s%s" $path (cond (ne $i 0) "/" "") $part}}
         <span class="Breadcrumb-divider">&gt;</span>
         {{if eq $i (sub (len $parts) 1)}}
         <span class="Breadcrumb-current">{{$part}}</span>
@@ -120,7 +120,7 @@
                     <summary class="Package-navSection">Functions</summary>
                     <ul class="Package-navList">
                         {{range .Pkg.Functions}}
-                        <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                        <li data-kind="func"><a href="#{{.Name}}">{{.Name}}</a></li>
                         {{end}}
                     </ul>
                 </details>
@@ -132,15 +132,15 @@
                     <ul class="Package-navList">
                         {{range .Pkg.Types}}
                         {{$typeName := .Name}}
-                        <li>
+                        <li data-kind="type">
                             <a href="#{{.Name}}">type {{.Name}}</a>
                             {{if or .Functions .Methods}}
                             <ul class="Package-navSublist">
                                 {{range .Functions}}
-                                <li><a href="#{{.Name}}">{{.Name}}</a></li>
+                                <li data-kind="func"><a href="#{{.Name}}">{{.Name}}</a></li>
                                 {{end}}
                                 {{range .Methods}}
-                                <li><a href="#{{$typeName}}.{{.Name}}">{{.Name}}</a></li>
+                                <li data-kind="func"><a href="#{{$typeName}}.{{.Name}}">{{.Name}}</a></li>
                                 {{end}}
                             </ul>
                             {{end}}

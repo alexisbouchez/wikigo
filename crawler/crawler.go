@@ -303,6 +303,11 @@ func (c *Crawler) worker(ctx context.Context, id int, modules <-chan ModuleVersi
 	}
 }
 
+// ProcessModulePublic is a public wrapper for processModule
+func (c *Crawler) ProcessModulePublic(ctx context.Context, mv ModuleVersion) error {
+	return c.processModule(ctx, mv)
+}
+
 // processModule fetches and indexes a single module
 func (c *Crawler) processModule(ctx context.Context, mv ModuleVersion) error {
 	c.statsMu.Lock()
@@ -333,16 +338,11 @@ func (c *Crawler) processModule(ctx context.Context, mv ModuleVersion) error {
 		return fmt.Errorf("downloading module: %w", err)
 	}
 
-	// Find the extracted directory
-	entries, err := os.ReadDir(tempDir)
+	// Find the module root directory (contains go.mod)
+	moduleDir, err := findModuleRoot(tempDir)
 	if err != nil {
-		return fmt.Errorf("reading temp dir: %w", err)
+		return fmt.Errorf("finding module root: %w", err)
 	}
-	if len(entries) == 0 {
-		return fmt.Errorf("no files extracted")
-	}
-
-	moduleDir := filepath.Join(tempDir, entries[0].Name())
 
 	// Extract and index packages
 	return c.indexModule(ctx, mv, moduleDir)
@@ -576,6 +576,8 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 			PackageID:  pkgID,
 			ImportPath: importPath,
 			Synopsis:   doc.Synopsis(fn.Doc),
+			Doc:        fn.Doc,
+			Signature:  formatDecl(fset, fn.Decl),
 			Deprecated: isDeprecated(fn.Doc),
 		}
 		if err := c.db.UpsertSymbol(sym); err == nil {
@@ -591,6 +593,8 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 			PackageID:  pkgID,
 			ImportPath: importPath,
 			Synopsis:   doc.Synopsis(t.Doc),
+			Doc:        t.Doc,
+			Decl:       formatDecl(fset, t.Decl),
 			Deprecated: isDeprecated(t.Doc),
 		}
 		if err := c.db.UpsertSymbol(sym); err == nil {
@@ -605,6 +609,8 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 				PackageID:  pkgID,
 				ImportPath: importPath,
 				Synopsis:   doc.Synopsis(m.Doc),
+				Doc:        m.Doc,
+				Signature:  formatDecl(fset, m.Decl),
 				Deprecated: isDeprecated(m.Doc),
 			}
 			if err := c.db.UpsertSymbol(sym); err == nil {
@@ -620,6 +626,8 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 				PackageID:  pkgID,
 				ImportPath: importPath,
 				Synopsis:   doc.Synopsis(fn.Doc),
+				Doc:        fn.Doc,
+				Signature:  formatDecl(fset, fn.Decl),
 				Deprecated: isDeprecated(fn.Doc),
 			}
 			if err := c.db.UpsertSymbol(sym); err == nil {
@@ -630,6 +638,7 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 
 	// Constants
 	for _, con := range docPkg.Consts {
+		decl := formatDecl(fset, con.Decl)
 		for _, name := range con.Names {
 			sym := &db.Symbol{
 				Name:       name,
@@ -637,6 +646,8 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 				PackageID:  pkgID,
 				ImportPath: importPath,
 				Synopsis:   doc.Synopsis(con.Doc),
+				Doc:        con.Doc,
+				Decl:       decl,
 			}
 			if err := c.db.UpsertSymbol(sym); err == nil {
 				symbolCount++
@@ -646,6 +657,7 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 
 	// Variables
 	for _, v := range docPkg.Vars {
+		decl := formatDecl(fset, v.Decl)
 		for _, name := range v.Names {
 			sym := &db.Symbol{
 				Name:       name,
@@ -653,6 +665,8 @@ func (c *Crawler) indexPackage(ctx context.Context, mv ModuleVersion, moduleDir,
 				PackageID:  pkgID,
 				ImportPath: importPath,
 				Synopsis:   doc.Synopsis(v.Doc),
+				Doc:        v.Doc,
+				Decl:       decl,
 			}
 			if err := c.db.UpsertSymbol(sym); err == nil {
 				symbolCount++
@@ -705,6 +719,28 @@ func (c *Crawler) printStats() {
 		rate := float64(c.stats.ModulesProcessed) / elapsed.Seconds()
 		log.Printf("Rate: %.2f modules/sec", rate)
 	}
+}
+
+// findModuleRoot walks the directory tree to find the module root (directory containing go.mod)
+func findModuleRoot(dir string) (string, error) {
+	var moduleRoot string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && info.Name() == "go.mod" {
+			moduleRoot = filepath.Dir(path)
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil && err != filepath.SkipAll {
+		return "", err
+	}
+	if moduleRoot == "" {
+		return "", fmt.Errorf("go.mod not found")
+	}
+	return moduleRoot, nil
 }
 
 // escapeModulePath escapes a module path for use in URLs

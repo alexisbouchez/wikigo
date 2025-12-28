@@ -1,0 +1,99 @@
+{{template "header" .}}
+<div class="Package">
+    <nav class="Breadcrumb">
+        <a href="/">Packages</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span>npm</span>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span>{{.JSPkg.Name}}</span>
+    </nav>
+
+    <div class="Package-main">
+        <div class="Package-header">
+            <div class="Package-headerContent">
+                <h1 class="Package-title">{{.JSPkg.Name}}</h1>
+                <p class="Package-path">
+                    <a href="https://www.npmjs.com/package/{{.JSPkg.Name}}" target="_blank">npm/{{.JSPkg.Name}}</a>
+                    <button class="Package-copy" onclick="navigator.clipboard.writeText('npm install {{.JSPkg.Name}}')" data-path="{{.JSPkg.Name}}">Copy install</button>
+                </p>
+            </div>
+            <div class="Package-meta">
+                <span class="Package-version">v{{.JSPkg.Version}}</span>
+                {{if .JSPkg.License}}
+                <span class="Package-license">{{.JSPkg.License}}</span>
+                {{end}}
+                {{if .JSPkg.HasTypeScript}}
+                <span class="Package-badge-inline">TypeScript</span>
+                {{end}}
+                {{if .JSPkg.Stars}}
+                <span class="Package-stars">{{.JSPkg.Stars}} stars</span>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="Package-badges">
+            {{if .JSPkg.RepositoryURL}}
+            <a href="{{.JSPkg.RepositoryURL}}" class="Package-badge" target="_blank">Repository</a>
+            {{end}}
+            {{if .JSPkg.Homepage}}
+            <a href="{{.JSPkg.Homepage}}" class="Package-badge" target="_blank">Homepage</a>
+            {{end}}
+            <a href="https://www.npmjs.com/package/{{.JSPkg.Name}}" class="Package-badge" target="_blank">npm</a>
+        </div>
+
+        <div class="Documentation">
+            {{if .JSPkg.Description}}
+            <section class="Documentation-overview" id="pkg-overview">
+                <h2 class="Documentation-sectionHeader">Overview</h2>
+                <p>{{.JSPkg.Description}}</p>
+            </section>
+            {{end}}
+
+            <section class="Documentation-section" id="pkg-install">
+                <h2 class="Documentation-sectionHeader">Installation</h2>
+                <pre class="Documentation-signature"><code class="language-bash">npm install {{.JSPkg.Name}}</code></pre>
+            </section>
+
+            {{if .Symbols}}
+            <section class="Documentation-section" id="pkg-symbols">
+                <h2 class="Documentation-sectionHeader">Exported Symbols ({{len .Symbols}})</h2>
+
+                {{range .SymbolsByKind}}
+                <div class="Documentation-subsection">
+                    <h3>{{.Kind}} ({{len .Symbols}})</h3>
+                    {{range .Symbols}}
+                    <div class="Documentation-function" id="{{.Name}}">
+                        <h4>
+                            <a href="#{{.Name}}" class="Documentation-idLink">{{.Name}}</a>
+                        </h4>
+                        {{if .Signature}}
+                        <pre class="Documentation-signature"><code class="language-typescript">{{.Signature}}</code></pre>
+                        {{end}}
+                        {{if .Doc}}
+                        <div class="Documentation-doc">{{.Doc}}</div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+        </div>
+    </div>
+
+    <nav class="Package-nav">
+        <div class="Package-navInner">
+            <h2 class="Package-navTitle">Documentation</h2>
+            <ul class="Package-navList">
+                {{if .JSPkg.Description}}
+                <li><a href="#pkg-overview">Overview</a></li>
+                {{end}}
+                <li><a href="#pkg-install">Installation</a></li>
+                {{if .Symbols}}
+                <li><a href="#pkg-symbols">Symbols</a></li>
+                {{end}}
+            </ul>
+        </div>
+    </nav>
+</div>
+{{template "footer" .}}

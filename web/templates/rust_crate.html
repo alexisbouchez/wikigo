@@ -1,0 +1,97 @@
+{{template "header" .}}
+<div class="Package">
+    <nav class="Breadcrumb">
+        <a href="/">Crates</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span>{{.Crate.Name}}</span>
+    </nav>
+
+    <div class="Package-main">
+        <div class="Package-header">
+            <div class="Package-headerContent">
+                <h1 class="Package-title">crate {{.Crate.Name}}</h1>
+                <p class="Package-path">
+                    <a href="https://crates.io/crates/{{.Crate.Name}}" target="_blank">crates.io/{{.Crate.Name}}</a>
+                    <button class="Package-copy" onclick="navigator.clipboard.writeText('{{.Crate.Name}}')" data-path="{{.Crate.Name}}">Copy</button>
+                </p>
+            </div>
+            <div class="Package-meta">
+                <span class="Package-version">v{{.Crate.Version}}</span>
+                {{if .Crate.License}}
+                <span class="Package-license">{{.Crate.License}}</span>
+                {{end}}
+                <span class="Package-downloads">{{.Crate.Downloads}} downloads</span>
+            </div>
+        </div>
+
+        <div class="Package-badges">
+            {{if .Crate.Repository}}
+            <a href="{{.Crate.Repository}}" class="Package-badge" target="_blank">Repository</a>
+            {{end}}
+            {{if .Crate.Documentation}}
+            <a href="{{.Crate.Documentation}}" class="Package-badge" target="_blank">Docs.rs</a>
+            {{end}}
+            <a href="https://crates.io/crates/{{.Crate.Name}}" class="Package-badge" target="_blank">crates.io</a>
+        </div>
+
+        <div class="Documentation">
+            {{if .Crate.Description}}
+            <section class="Documentation-overview" id="pkg-overview">
+                <h2 class="Documentation-sectionHeader">Overview</h2>
+                <p>{{.Crate.Description}}</p>
+            </section>
+            {{end}}
+
+            {{if .Crate.Keywords}}
+            <section class="Documentation-section">
+                <h2 class="Documentation-sectionHeader">Keywords</h2>
+                <div class="Package-keywords">
+                    {{range .Crate.Keywords}}
+                    <span class="Package-keyword">{{.}}</span>
+                    {{end}}
+                </div>
+            </section>
+            {{end}}
+
+            {{if .Symbols}}
+            <section class="Documentation-section" id="pkg-symbols">
+                <h2 class="Documentation-sectionHeader">Public Symbols ({{len .Symbols}})</h2>
+
+                {{range .SymbolsByKind}}
+                <div class="Documentation-subsection">
+                    <h3>{{.Kind}} ({{len .Symbols}})</h3>
+                    {{range .Symbols}}
+                    <div class="Documentation-function" id="{{.Name}}">
+                        <h4>
+                            <a href="#{{.Name}}" class="Documentation-idLink">{{.Name}}</a>
+                        </h4>
+                        {{if .Signature}}
+                        <pre class="Documentation-signature"><code class="language-rust">{{.Signature}}</code></pre>
+                        {{end}}
+                        {{if .Doc}}
+                        <div class="Documentation-doc">{{.Doc}}</div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+        </div>
+    </div>
+
+    <nav class="Package-nav">
+        <div class="Package-navInner">
+            <h2 class="Package-navTitle">Documentation</h2>
+            <ul class="Package-navList">
+                {{if .Crate.Description}}
+                <li><a href="#pkg-overview">Overview</a></li>
+                {{end}}
+                {{if .Symbols}}
+                <li><a href="#pkg-symbols">Symbols</a></li>
+                {{end}}
+            </ul>
+        </div>
+    </nav>
+</div>
+{{template "footer" .}}

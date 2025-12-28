@@ -412,14 +412,28 @@ function fetchSuggestions(query) {
 
 function showAutocomplete(results) {
     if (!autocompleteContainer) return;
-    autocompleteContainer.innerHTML = results.map(pkg => `
-        <div class="SearchAutocomplete-item">
-            <a href="/${pkg.import_path}">
-                <span class="SearchAutocomplete-path">${pkg.import_path}</span>
-                <span class="SearchAutocomplete-synopsis">${pkg.synopsis || ''}</span>
-            </a>
-        </div>
-    `).join('');
+    autocompleteContainer.innerHTML = results.map(pkg => {
+        const lang = pkg.lang || 'go';
+        let langBadge;
+        if (lang === 'rust') {
+            langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--rust">Rust</span>';
+        } else if (lang === 'js') {
+            langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--js">JS</span>';
+        } else {
+            langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--go">Go</span>';
+        }
+        return `
+            <div class="SearchAutocomplete-item">
+                <a href="/${pkg.import_path}">
+                    <span class="SearchAutocomplete-header">
+                        ${langBadge}
+                        <span class="SearchAutocomplete-path">${pkg.import_path}</span>
+                    </span>
+                    <span class="SearchAutocomplete-synopsis">${pkg.synopsis || ''}</span>
+                </a>
+            </div>
+        `;
+    }).join('');
     autocompleteContainer.style.display = 'block';
 }
 
@@ -557,11 +571,8 @@ function initSymbolSearch() {
 
             let matchesType = true;
             if (activeFilter !== 'all') {
-                if (activeFilter === 'func') {
-                    matchesType = text.includes('func ');
-                } else if (activeFilter === 'type') {
-                    matchesType = text.includes('type ');
-                }
+                const itemKind = item.dataset.kind || item.closest('[data-kind]')?.dataset.kind || '';
+                matchesType = itemKind === activeFilter;
             }
 
             item.style.display = (matchesQuery && matchesType) ? '' : 'none';
@@ -687,8 +698,31 @@ style.textContent = `
     .SearchAutocomplete-item.selected {
         background: var(--color-background-secondary);
     }
+    .SearchAutocomplete-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .SearchAutocomplete-lang {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.1rem 0.4rem;
+        border-radius: 0.25rem;
+        text-transform: uppercase;
+    }
+    .SearchAutocomplete-lang--go {
+        background: #00add8;
+        color: white;
+    }
+    .SearchAutocomplete-lang--rust {
+        background: #dea584;
+        color: #1a1a1a;
+    }
+    .SearchAutocomplete-lang--js {
+        background: #f7df1e;
+        color: #1a1a1a;
+    }
     .SearchAutocomplete-path {
-        display: block;
         font-family: var(--font-family-mono);
         font-size: 0.875rem;
         color: var(--color-link);

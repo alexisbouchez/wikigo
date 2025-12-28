@@ -375,7 +375,88 @@ func (s *Server) FindPackage(path string) (*PackageDoc, bool) {
 			}
 		}
 	}
+
+	// If not found in JSON files, try database
+	if !ok && s.db != nil {
+		dbPkg, err := s.db.GetPackage(path)
+		if err != nil {
+			log.Printf("Error fetching package from db: %v", err)
+		} else if dbPkg != nil {
+			// Convert db.Package to PackageDoc
+			pkg = s.dbPackageToDoc(dbPkg)
+			ok = true
+		}
+	}
+
 	return pkg, ok
+}
+
+// dbPackageToDoc converts a database Package to a PackageDoc
+func (s *Server) dbPackageToDoc(dbPkg *db.Package) *PackageDoc {
+	pkg := &PackageDoc{
+		ImportPath:      dbPkg.ImportPath,
+		Name:            dbPkg.Name,
+		Doc:             dbPkg.Doc,
+		Synopsis:        dbPkg.Synopsis,
+		Version:         dbPkg.Version,
+		Versions:        dbPkg.Versions,
+		IsTagged:        dbPkg.IsTagged,
+		IsStable:        dbPkg.IsStable,
+		License:         dbPkg.License,
+		LicenseText:     dbPkg.LicenseText,
+		Redistributable: dbPkg.Redistributable,
+		Repository:      dbPkg.Repository,
+		HasValidMod:     dbPkg.HasValidMod,
+		GoVersion:       dbPkg.GoVersion,
+		ModulePath:      dbPkg.ModulePath,
+		GoModContent:    dbPkg.GoModContent,
+		GOOS:            dbPkg.GOOS,
+		GOARCH:          dbPkg.GOARCH,
+	}
+
+	// Fetch symbols for this package
+	symbols, err := s.db.GetPackageSymbols(dbPkg.ID)
+	if err != nil {
+		log.Printf("Error fetching symbols: %v", err)
+		return pkg
+	}
+
+	// Group symbols by kind
+	for _, sym := range symbols {
+		switch sym.Kind {
+		case "func":
+			pkg.Functions = append(pkg.Functions, Function{
+				Name:       sym.Name,
+				Doc:        sym.Doc,
+				Signature:  sym.Signature,
+				Deprecated: sym.Deprecated,
+			})
+		case "type":
+			pkg.Types = append(pkg.Types, Type{
+				Name:       sym.Name,
+				Doc:        sym.Doc,
+				Decl:       sym.Decl,
+				Deprecated: sym.Deprecated,
+			})
+		case "const":
+			pkg.Constants = append(pkg.Constants, Constant{
+				Names: []string{sym.Name},
+				Doc:   sym.Doc,
+				Decl:  sym.Decl,
+			})
+		case "var":
+			pkg.Variables = append(pkg.Variables, Variable{
+				Names: []string{sym.Name},
+				Doc:   sym.Doc,
+				Decl:  sym.Decl,
+			})
+		case "method":
+			// Methods are attached to types - skip for now
+			// TODO: properly attach methods to their types
+		}
+	}
+
+	return pkg
 }
 
 // FindPackageWithPath finds a package and returns the matched import path
@@ -455,6 +536,8 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/diff/", s.handleDiff)
 	mux.HandleFunc("/compare/", s.handleCompare)
 	mux.HandleFunc("/api/explain", s.handleExplain)
+	mux.HandleFunc("/crates.io/", s.handleRustCrate)
+	mux.HandleFunc("/npm/", s.handleJSPackage)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -523,6 +606,7 @@ func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Title       string
 		SearchQuery string
+		Pkg         *PackageDoc
 		Packages    []*PackageDoc
 		Page        int
 		TotalPages  int
@@ -533,6 +617,7 @@ func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
 	}{
 		Title:       "Go Packages",
 		SearchQuery: "",
+		Pkg:         nil,
 		Packages:    packages,
 		Page:        page,
 		TotalPages:  totalPages,
@@ -644,10 +729,13 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Convert db.Package to PackageDoc
 			for _, dbPkg := range dbPkgs {
+				// Try in-memory first, then database
 				pkg, ok := s.packages[dbPkg.ImportPath]
-				if ok {
-					allResults = append(allResults, pkg)
+				if !ok {
+					// Not in JSON files, create from database
+					pkg = s.dbPackageToDoc(dbPkg)
 				}
+				allResults = append(allResults, pkg)
 			}
 			total = len(allResults)
 
@@ -694,6 +782,7 @@ render:
 	data := struct {
 		Title       string
 		SearchQuery string
+		Pkg         *PackageDoc
 		Query       string
 		Results     []*PackageDoc
 		Page        int
@@ -705,6 +794,7 @@ render:
 	}{
 		Title:       "Search Results - " + query + " - Go Packages",
 		SearchQuery: query,
+		Pkg:         nil,
 		Query:       query,
 		Results:     results,
 		Page:        page,
@@ -742,42 +832,87 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 
 	if path == "search" {
 		query := r.URL.Query().Get("q")
+		lang := r.URL.Query().Get("lang") // "go", "rust", or "" for all
 		w.Header().Set("Content-Type", "application/json")
 		if query == "" {
-			json.NewEncoder(w).Encode([]map[string]string{})
+			json.NewEncoder(w).Encode([]map[string]interface{}{})
 			return
 		}
 
-		var results []map[string]string
+		var results []map[string]interface{}
 
 		// Use database search if available
 		if s.db != nil {
-			dbPkgs, err := s.db.SearchPackages(query, 100)
-			if err != nil {
-				log.Printf("Database search error in API: %v", err)
-			} else {
-				for _, dbPkg := range dbPkgs {
-					results = append(results, map[string]string{
-						"import_path": dbPkg.ImportPath,
-						"name":        dbPkg.Name,
-						"synopsis":    dbPkg.Synopsis,
-					})
+			// Search Go packages
+			if lang == "" || lang == "go" {
+				dbPkgs, err := s.db.SearchPackages(query, 50)
+				if err != nil {
+					log.Printf("Database search error in API: %v", err)
+				} else {
+					for _, dbPkg := range dbPkgs {
+						results = append(results, map[string]interface{}{
+							"import_path": dbPkg.ImportPath,
+							"name":        dbPkg.Name,
+							"synopsis":    dbPkg.Synopsis,
+							"lang":        "go",
+						})
+					}
 				}
-				json.NewEncoder(w).Encode(results)
-				return
 			}
+
+			// Search Rust crates
+			if lang == "" || lang == "rust" {
+				rustCrates, err := s.db.SearchRustCrates(query, 50)
+				if err != nil {
+					log.Printf("Rust crate search error in API: %v", err)
+				} else {
+					for _, crate := range rustCrates {
+						results = append(results, map[string]interface{}{
+							"import_path": "crates.io/" + crate.Name,
+							"name":        crate.Name,
+							"synopsis":    crate.Description,
+							"lang":        "rust",
+							"version":     crate.Version,
+							"downloads":   crate.Downloads,
+						})
+					}
+				}
+			}
+
+			// Search JS/npm packages
+			if lang == "" || lang == "js" || lang == "npm" {
+				jsPkgs, err := s.db.SearchJSPackages(query, 50)
+				if err != nil {
+					log.Printf("JS package search error in API: %v", err)
+				} else {
+					for _, pkg := range jsPkgs {
+						results = append(results, map[string]interface{}{
+							"import_path": "npm/" + pkg.Name,
+							"name":        pkg.Name,
+							"synopsis":    pkg.Description,
+							"lang":        "js",
+							"version":     pkg.Version,
+							"stars":       pkg.Stars,
+						})
+					}
+				}
+			}
+
+			json.NewEncoder(w).Encode(results)
+			return
 		}
 
-		// Fallback: in-memory search
+		// Fallback: in-memory search (Go only)
 		queryLower := strings.ToLower(query)
 		for _, pkg := range s.packages {
 			if strings.Contains(strings.ToLower(pkg.ImportPath), queryLower) ||
 				strings.Contains(strings.ToLower(pkg.Name), queryLower) ||
 				strings.Contains(strings.ToLower(pkg.Synopsis), queryLower) {
-				results = append(results, map[string]string{
+				results = append(results, map[string]interface{}{
 					"import_path": pkg.ImportPath,
 					"name":        pkg.Name,
 					"synopsis":    pkg.Synopsis,
+					"lang":        "go",
 				})
 			}
 		}
@@ -797,6 +932,168 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(pkg)
+}
+
+// handleRustCrate handles Rust crate pages
+func (s *Server) handleRustCrate(w http.ResponseWriter, r *http.Request) {
+	crateName := strings.TrimPrefix(r.URL.Path, "/crates.io/")
+	if crateName == "" {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	if s.db == nil {
+		http.Error(w, "Database not available", http.StatusInternalServerError)
+		return
+	}
+
+	crate, err := s.db.GetRustCrate(crateName)
+	if err != nil {
+		log.Printf("Error getting crate: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if crate == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	symbols, err := s.db.GetRustCrateSymbols(crate.ID)
+	if err != nil {
+		log.Printf("Error getting crate symbols: %v", err)
+	}
+
+	// Group symbols by kind
+	type symbolGroup struct {
+		Kind    string
+		Symbols []*db.RustSymbol
+	}
+	kindOrder := []string{"struct", "enum", "trait", "fn", "const", "type", "macro", "mod"}
+	groupMap := make(map[string][]*db.RustSymbol)
+	for _, sym := range symbols {
+		groupMap[sym.Kind] = append(groupMap[sym.Kind], sym)
+	}
+	var symbolsByKind []symbolGroup
+	for _, kind := range kindOrder {
+		if syms, ok := groupMap[kind]; ok {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+	// Add any remaining kinds
+	for kind, syms := range groupMap {
+		found := false
+		for _, k := range kindOrder {
+			if k == kind {
+				found = true
+				break
+			}
+		}
+		if !found {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+
+	data := struct {
+		Title         string
+		SearchQuery   string
+		Pkg           *PackageDoc
+		Crate         *db.RustCrate
+		Symbols       []*db.RustSymbol
+		SymbolsByKind []symbolGroup
+	}{
+		Title:         crate.Name + " - Rust Crate",
+		SearchQuery:   "",
+		Pkg:           nil,
+		Crate:         crate,
+		Symbols:       symbols,
+		SymbolsByKind: symbolsByKind,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "rust_crate.html", data); err != nil {
+		log.Printf("Error rendering rust crate: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleJSPackage handles JavaScript/npm package pages
+func (s *Server) handleJSPackage(w http.ResponseWriter, r *http.Request) {
+	pkgName := strings.TrimPrefix(r.URL.Path, "/npm/")
+	if pkgName == "" {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	if s.db == nil {
+		http.Error(w, "Database not available", http.StatusInternalServerError)
+		return
+	}
+
+	pkg, err := s.db.GetJSPackage(pkgName)
+	if err != nil {
+		log.Printf("Error getting JS package: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if pkg == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	symbols, err := s.db.GetJSPackageSymbols(pkg.ID)
+	if err != nil {
+		log.Printf("Error getting JS package symbols: %v", err)
+	}
+
+	// Group symbols by kind
+	type symbolGroup struct {
+		Kind    string
+		Symbols []*db.JSSymbol
+	}
+	kindOrder := []string{"class", "interface", "function", "type", "enum", "const"}
+	groupMap := make(map[string][]*db.JSSymbol)
+	for _, sym := range symbols {
+		groupMap[sym.Kind] = append(groupMap[sym.Kind], sym)
+	}
+	var symbolsByKind []symbolGroup
+	for _, kind := range kindOrder {
+		if syms, ok := groupMap[kind]; ok {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+	// Add remaining kinds
+	for kind, syms := range groupMap {
+		found := false
+		for _, k := range kindOrder {
+			if k == kind {
+				found = true
+				break
+			}
+		}
+		if !found {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+
+	data := struct {
+		Title         string
+		SearchQuery   string
+		Pkg           *PackageDoc
+		JSPkg         *db.JSPackage
+		Symbols       []*db.JSSymbol
+		SymbolsByKind []symbolGroup
+	}{
+		Title:         pkg.Name + " - npm package",
+		SearchQuery:   "",
+		Pkg:           nil,
+		JSPkg:         pkg,
+		Symbols:       symbols,
+		SymbolsByKind: symbolsByKind,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "js_package.html", data); err != nil {
+		log.Printf("Error rendering JS package: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // handleBadge handles badge generation (shields.io compatible)
@@ -1192,6 +1489,7 @@ render:
 	data := struct {
 		Title       string
 		SearchQuery string
+		Pkg         *PackageDoc
 		Query       string
 		Kind        string
 		Results     []SymbolResult
@@ -1204,6 +1502,7 @@ render:
 	}{
 		Title:       "Symbol Search - Go Packages",
 		SearchQuery: query,
+		Pkg:         nil,
 		Query:       query,
 		Kind:        kind,
 		Results:     results,
@@ -1942,6 +2241,7 @@ func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Title       string
 		SearchQuery string
+		Pkg         *PackageDoc
 		AllPackages []string
 		Pkg1Path    string
 		Pkg2Path    string
@@ -1952,6 +2252,7 @@ func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
 	}{
 		Title:       "Compare Packages - Go Packages",
 		SearchQuery: "",
+		Pkg:         nil,
 		AllPackages: allPackages,
 		Pkg1Path:    pkg1Path,
 		Pkg2Path:    pkg2Path,

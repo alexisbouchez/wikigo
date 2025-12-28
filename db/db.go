@@ -57,6 +57,9 @@ type Symbol struct {
 	PackageID  int64  `json:"package_id"`
 	ImportPath string `json:"import_path"`
 	Synopsis   string `json:"synopsis"`
+	Doc        string `json:"doc"`       // Full documentation
+	Signature  string `json:"signature"` // Function signature
+	Decl       string `json:"decl"`      // Type/const/var declaration
 	Deprecated bool   `json:"deprecated"`
 }
 
@@ -164,6 +167,9 @@ func (db *DB) migrate() error {
 			package_id INTEGER NOT NULL,
 			import_path TEXT NOT NULL,
 			synopsis TEXT,
+			doc TEXT,
+			signature TEXT,
+			decl TEXT,
 			deprecated INTEGER DEFAULT 0,
 			FOREIGN KEY (package_id) REFERENCES packages(id) ON DELETE CASCADE
 		)`,
@@ -712,12 +718,15 @@ func (db *DB) GetImportedByCount(importPath string) (int, error) {
 // UpsertSymbol inserts or updates a symbol
 func (db *DB) UpsertSymbol(symbol *Symbol) error {
 	_, err := db.conn.Exec(`
-		INSERT INTO symbols (name, kind, package_id, import_path, synopsis, deprecated)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO symbols (name, kind, package_id, import_path, synopsis, doc, signature, decl, deprecated)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT DO UPDATE SET
 			synopsis = excluded.synopsis,
+			doc = excluded.doc,
+			signature = excluded.signature,
+			decl = excluded.decl,
 			deprecated = excluded.deprecated
-	`, symbol.Name, symbol.Kind, symbol.PackageID, symbol.ImportPath, symbol.Synopsis, symbol.Deprecated)
+	`, symbol.Name, symbol.Kind, symbol.PackageID, symbol.ImportPath, symbol.Synopsis, symbol.Doc, symbol.Signature, symbol.Decl, symbol.Deprecated)
 	return err
 }
 
@@ -725,6 +734,33 @@ func (db *DB) UpsertSymbol(symbol *Symbol) error {
 func (db *DB) DeletePackageSymbols(packageID int64) error {
 	_, err := db.conn.Exec("DELETE FROM symbols WHERE package_id = ?", packageID)
 	return err
+}
+
+// GetPackageSymbols returns all symbols for a package
+func (db *DB) GetPackageSymbols(packageID int64) ([]*Symbol, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, package_id, import_path, synopsis, doc, signature, decl, deprecated
+		FROM symbols WHERE package_id = ?
+		ORDER BY kind, name
+	`, packageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*Symbol
+	for rows.Next() {
+		sym := &Symbol{}
+		var doc, signature, decl sql.NullString
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.PackageID, &sym.ImportPath, &sym.Synopsis, &doc, &signature, &decl, &sym.Deprecated); err != nil {
+			return nil, err
+		}
+		sym.Doc = doc.String
+		sym.Signature = signature.String
+		sym.Decl = decl.String
+		symbols = append(symbols, sym)
+	}
+	return symbols, rows.Err()
 }
 
 // SearchSymbols searches symbols using full-text search
@@ -1523,4 +1559,54 @@ func (db *DB) GetRustCrate(name string) (*RustCrate, error) {
 	}
 
 	return &crate, nil
+}
+
+// GetJSPackageSymbols returns all symbols for a JS package
+func (db *DB) GetJSPackageSymbols(packageID int64) ([]*JSSymbol, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, package_id, package_name, file_path, line, exported, doc, deprecated
+		FROM js_symbols WHERE package_id = ? AND exported = 1
+		ORDER BY kind, name
+	`, packageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*JSSymbol
+	for rows.Next() {
+		sym := &JSSymbol{}
+		var doc sql.NullString
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature, &sym.PackageID, &sym.PackageName, &sym.FilePath, &sym.Line, &sym.Exported, &doc, &sym.Deprecated); err != nil {
+			return nil, err
+		}
+		sym.Doc = doc.String
+		symbols = append(symbols, sym)
+	}
+	return symbols, rows.Err()
+}
+
+// GetRustCrateSymbols returns all symbols for a Rust crate
+func (db *DB) GetRustCrateSymbols(crateID int64) ([]*RustSymbol, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, crate_id, crate_name, file_path, line, public, doc
+		FROM rust_symbols WHERE crate_id = ? AND public = 1
+		ORDER BY kind, name
+	`, crateID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*RustSymbol
+	for rows.Next() {
+		sym := &RustSymbol{}
+		var doc sql.NullString
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature, &sym.CrateID, &sym.CrateName, &sym.FilePath, &sym.Line, &sym.Public, &doc); err != nil {
+			return nil, err
+		}
+		sym.Doc = doc.String
+		symbols = append(symbols, sym)
+	}
+	return symbols, rows.Err()
 }
