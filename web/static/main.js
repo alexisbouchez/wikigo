@@ -1,12 +1,5 @@
 // Main JavaScript for wikigo
-
-// Theme toggle
-(function() {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
-})();
+// Note: Theme initialization is in base.html <head> to prevent blink
 
 function toggleTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -421,6 +414,8 @@ function showAutocomplete(results) {
             langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--js">JS</span>';
         } else if (lang === 'python') {
             langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--python">Python</span>';
+        } else if (lang === 'php') {
+            langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--php">PHP</span>';
         } else {
             langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--go">Go</span>';
         }
@@ -726,6 +721,10 @@ style.textContent = `
     }
     .SearchAutocomplete-lang--python {
         background: #3776ab;
+        color: white;
+    }
+    .SearchAutocomplete-lang--php {
+        background: #8892bf;
         color: white;
     }
     .SearchAutocomplete-path {

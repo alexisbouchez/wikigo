@@ -1,0 +1,107 @@
+{{template "header" .}}
+<div class="Package">
+    <nav class="Breadcrumb">
+        <a href="/">Packages</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span>packagist</span>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span>{{.PHPPkg.Name}}</span>
+    </nav>
+
+    <div class="Package-main">
+        <div class="Package-header">
+            <div class="Package-headerContent">
+                <h1 class="Package-title">{{.PHPPkg.Name}}</h1>
+                <p class="Package-path">
+                    <a href="https://packagist.org/packages/{{.PHPPkg.Name}}" target="_blank">packagist.org/{{.PHPPkg.Name}}</a>
+                    <button class="Package-copy" onclick="navigator.clipboard.writeText('composer require {{.PHPPkg.Name}}')" data-path="{{.PHPPkg.Name}}">Copy install</button>
+                </p>
+            </div>
+            <div class="Package-meta">
+                <span class="Package-version">{{.PHPPkg.Version}}</span>
+                {{if .PHPPkg.License}}
+                <span class="Package-license">{{.PHPPkg.License}}</span>
+                {{end}}
+                {{if .PHPPkg.Type}}
+                <span class="Package-badge-inline">{{.PHPPkg.Type}}</span>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="Package-badges">
+            {{if .PHPPkg.RepositoryURL}}
+            <a href="{{.PHPPkg.RepositoryURL}}" class="Package-badge" target="_blank">Repository</a>
+            {{end}}
+            {{if .PHPPkg.Homepage}}
+            <a href="{{.PHPPkg.Homepage}}" class="Package-badge" target="_blank">Homepage</a>
+            {{end}}
+            <a href="https://packagist.org/packages/{{.PHPPkg.Name}}" class="Package-badge" target="_blank">Packagist</a>
+        </div>
+
+        <div class="Documentation">
+            {{if .PHPPkg.Description}}
+            <section class="Documentation-overview" id="pkg-overview">
+                <h2 class="Documentation-sectionHeader">Overview</h2>
+                <p>{{.PHPPkg.Description}}</p>
+            </section>
+            {{end}}
+
+            <section class="Documentation-section" id="pkg-install">
+                <h2 class="Documentation-sectionHeader">Installation</h2>
+                <pre class="Documentation-signature"><code class="language-bash">composer require {{.PHPPkg.Name}}</code></pre>
+            </section>
+
+            {{if .PHPPkg.Keywords}}
+            <section class="Documentation-section">
+                <h2 class="Documentation-sectionHeader">Keywords</h2>
+                <div class="Package-keywords">
+                    {{range .PHPPkg.Keywords}}
+                    <span class="Package-keyword">{{.}}</span>
+                    {{end}}
+                </div>
+            </section>
+            {{end}}
+
+            {{if .Symbols}}
+            <section class="Documentation-section" id="pkg-symbols">
+                <h2 class="Documentation-sectionHeader">Public Symbols ({{len .Symbols}})</h2>
+
+                {{range .SymbolsByKind}}
+                <div class="Documentation-subsection">
+                    <h3>{{.Kind}} ({{len .Symbols}})</h3>
+                    {{range .Symbols}}
+                    <div class="Documentation-function" id="{{.Name}}">
+                        <h4>
+                            <a href="#{{.Name}}" class="Documentation-idLink">{{.Name}}</a>
+                        </h4>
+                        {{if .Signature}}
+                        <pre class="Documentation-signature"><code class="language-php">{{.Signature}}</code></pre>
+                        {{end}}
+                        {{if .Doc}}
+                        <div class="Documentation-doc">{{.Doc}}</div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+        </div>
+    </div>
+
+    <nav class="Package-nav">
+        <div class="Package-navInner">
+            <h2 class="Package-navTitle">Documentation</h2>
+            <ul class="Package-navList">
+                {{if .PHPPkg.Description}}
+                <li><a href="#pkg-overview">Overview</a></li>
+                {{end}}
+                <li><a href="#pkg-install">Installation</a></li>
+                {{if .Symbols}}
+                <li><a href="#pkg-symbols">Symbols</a></li>
+                {{end}}
+            </ul>
+        </div>
+    </nav>
+</div>
+{{template "footer" .}}

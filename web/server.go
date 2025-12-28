@@ -539,6 +539,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
+	mux.HandleFunc("/packagist/", s.handlePHPPackage)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -917,6 +918,25 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// Search PHP/Packagist packages
+			if lang == "" || lang == "php" || lang == "packagist" {
+				phpPkgs, err := s.db.SearchPHPPackages(query, 50)
+				if err != nil {
+					log.Printf("PHP package search error in API: %v", err)
+				} else {
+					for _, pkg := range phpPkgs {
+						results = append(results, map[string]interface{}{
+							"import_path": "packagist/" + pkg.Name,
+							"name":        pkg.Name,
+							"synopsis":    pkg.Description,
+							"lang":        "php",
+							"version":     pkg.Version,
+							"downloads":   pkg.Downloads,
+						})
+					}
+				}
+			}
+
 			json.NewEncoder(w).Encode(results)
 			return
 		}
@@ -1192,6 +1212,87 @@ func (s *Server) handlePythonPackage(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "python_package.html", data); err != nil {
 		log.Printf("Error rendering Python package: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handlePHPPackage handles PHP/Packagist package pages
+func (s *Server) handlePHPPackage(w http.ResponseWriter, r *http.Request) {
+	pkgName := strings.TrimPrefix(r.URL.Path, "/packagist/")
+	if pkgName == "" {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	if s.db == nil {
+		http.Error(w, "Database not available", http.StatusInternalServerError)
+		return
+	}
+
+	pkg, err := s.db.GetPHPPackage(pkgName)
+	if err != nil {
+		log.Printf("Error getting PHP package: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if pkg == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	symbols, err := s.db.GetPHPPackageSymbols(pkg.ID)
+	if err != nil {
+		log.Printf("Error getting PHP package symbols: %v", err)
+	}
+
+	// Group symbols by kind
+	type symbolGroup struct {
+		Kind    string
+		Symbols []*db.PHPSymbol
+	}
+	kindOrder := []string{"class", "interface", "trait", "function", "constant"}
+	groupMap := make(map[string][]*db.PHPSymbol)
+	for _, sym := range symbols {
+		groupMap[sym.Kind] = append(groupMap[sym.Kind], sym)
+	}
+	var symbolsByKind []symbolGroup
+	for _, kind := range kindOrder {
+		if syms, ok := groupMap[kind]; ok {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+	// Add remaining kinds
+	for kind, syms := range groupMap {
+		found := false
+		for _, k := range kindOrder {
+			if k == kind {
+				found = true
+				break
+			}
+		}
+		if !found {
+			symbolsByKind = append(symbolsByKind, symbolGroup{Kind: kind, Symbols: syms})
+		}
+	}
+
+	data := struct {
+		Title         string
+		SearchQuery   string
+		Pkg           *PackageDoc
+		PHPPkg        *db.PHPPackage
+		Symbols       []*db.PHPSymbol
+		SymbolsByKind []symbolGroup
+	}{
+		Title:         pkg.Name + " - Packagist package",
+		SearchQuery:   "",
+		Pkg:           nil,
+		PHPPkg:        pkg,
+		Symbols:       symbols,
+		SymbolsByKind: symbolsByKind,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "php_package.html", data); err != nil {
+		log.Printf("Error rendering PHP package: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

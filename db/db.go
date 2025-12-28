@@ -561,6 +561,98 @@ func (db *DB) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_python_packages_name ON python_packages(name)`,
 		`CREATE INDEX IF NOT EXISTS idx_python_symbols_package ON python_symbols(package_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_python_symbols_public ON python_symbols(public)`,
+
+		// PHP packages table
+		`CREATE TABLE IF NOT EXISTS php_packages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			version TEXT,
+			description TEXT,
+			type TEXT,
+			license TEXT,
+			homepage TEXT,
+			repository_url TEXT,
+			packagist_url TEXT,
+			downloads INTEGER DEFAULT 0,
+			stars INTEGER DEFAULT 0,
+			authors_json TEXT,
+			keywords_json TEXT,
+			require_json TEXT,
+			readme TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// PHP symbols table
+		`CREATE TABLE IF NOT EXISTS php_symbols (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			signature TEXT,
+			package_id INTEGER NOT NULL,
+			package_name TEXT NOT NULL,
+			file_path TEXT,
+			line INTEGER DEFAULT 0,
+			public INTEGER DEFAULT 0,
+			doc TEXT,
+			FOREIGN KEY (package_id) REFERENCES php_packages(id) ON DELETE CASCADE
+		)`,
+
+		// PHP packages FTS table
+		`CREATE VIRTUAL TABLE IF NOT EXISTS php_packages_fts USING fts4(
+			name,
+			description,
+			keywords,
+			content=php_packages,
+			tokenize=porter
+		)`,
+
+		// PHP symbols FTS table
+		`CREATE VIRTUAL TABLE IF NOT EXISTS php_symbols_fts USING fts4(
+			name,
+			signature,
+			doc,
+			content=php_symbols,
+			tokenize=porter
+		)`,
+
+		// Triggers for PHP packages FTS
+		`CREATE TRIGGER IF NOT EXISTS php_packages_ai AFTER INSERT ON php_packages BEGIN
+			INSERT INTO php_packages_fts(docid, name, description, keywords)
+			VALUES (new.id, new.name, new.description, new.keywords_json);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS php_packages_ad AFTER DELETE ON php_packages BEGIN
+			DELETE FROM php_packages_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS php_packages_au AFTER UPDATE ON php_packages BEGIN
+			DELETE FROM php_packages_fts WHERE docid = old.id;
+			INSERT INTO php_packages_fts(docid, name, description, keywords)
+			VALUES (new.id, new.name, new.description, new.keywords_json);
+		END`,
+
+		// Triggers for PHP symbols FTS
+		`CREATE TRIGGER IF NOT EXISTS php_symbols_ai AFTER INSERT ON php_symbols BEGIN
+			INSERT INTO php_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS php_symbols_ad AFTER DELETE ON php_symbols BEGIN
+			DELETE FROM php_symbols_fts WHERE docid = old.id;
+		END`,
+
+		`CREATE TRIGGER IF NOT EXISTS php_symbols_au AFTER UPDATE ON php_symbols BEGIN
+			DELETE FROM php_symbols_fts WHERE docid = old.id;
+			INSERT INTO php_symbols_fts(docid, name, signature, doc)
+			VALUES (new.id, new.name, new.signature, new.doc);
+		END`,
+
+		// Indexes for PHP
+		`CREATE INDEX IF NOT EXISTS idx_php_packages_name ON php_packages(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_php_symbols_package ON php_symbols(package_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_php_symbols_public ON php_symbols(public)`,
 	}
 
 	for _, migration := range migrations {
@@ -1938,6 +2030,238 @@ func (db *DB) SearchPythonSymbols(query string, limit int) ([]*PythonSymbol, err
 	var symbols []*PythonSymbol
 	for rows.Next() {
 		sym := &PythonSymbol{}
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature,
+			&sym.PackageName, &sym.FilePath, &sym.Line); err != nil {
+			return nil, err
+		}
+		symbols = append(symbols, sym)
+	}
+
+	return symbols, nil
+}
+
+// PHPPackage represents a PHP package from Packagist
+type PHPPackage struct {
+	ID            int64
+	Name          string
+	Version       string
+	Description   string
+	Type          string
+	License       string
+	Homepage      string
+	RepositoryURL string
+	PackagistURL  string
+	Downloads     int
+	Stars         int
+	Authors       []string
+	Keywords      []string
+	Require       map[string]string
+	README        string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IndexedAt     time.Time
+}
+
+// PHPSymbol represents a PHP symbol
+type PHPSymbol struct {
+	ID          int64
+	Name        string
+	Kind        string
+	Signature   string
+	PackageID   int64
+	PackageName string
+	FilePath    string
+	Line        int
+	Public      bool
+	Doc         string
+}
+
+// UpsertPHPPackage inserts or updates a PHP package
+func (db *DB) UpsertPHPPackage(pkg *PHPPackage) (int64, error) {
+	authorsJSON, _ := json.Marshal(pkg.Authors)
+	keywordsJSON, _ := json.Marshal(pkg.Keywords)
+	requireJSON, _ := json.Marshal(pkg.Require)
+
+	result, err := db.conn.Exec(`
+		INSERT INTO php_packages (name, version, description, type, license,
+			homepage, repository_url, packagist_url, downloads, stars,
+			authors_json, keywords_json, require_json, readme, updated_at, indexed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(name) DO UPDATE SET
+			version = excluded.version,
+			description = excluded.description,
+			type = excluded.type,
+			license = excluded.license,
+			homepage = excluded.homepage,
+			repository_url = excluded.repository_url,
+			packagist_url = excluded.packagist_url,
+			downloads = excluded.downloads,
+			stars = excluded.stars,
+			authors_json = excluded.authors_json,
+			keywords_json = excluded.keywords_json,
+			require_json = excluded.require_json,
+			readme = excluded.readme,
+			updated_at = CURRENT_TIMESTAMP,
+			indexed_at = CURRENT_TIMESTAMP
+	`, pkg.Name, pkg.Version, pkg.Description, pkg.Type, pkg.License,
+		pkg.Homepage, pkg.RepositoryURL, pkg.PackagistURL, pkg.Downloads, pkg.Stars,
+		string(authorsJSON), string(keywordsJSON), string(requireJSON), pkg.README)
+
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		var pkgID int64
+		err = db.conn.QueryRow("SELECT id FROM php_packages WHERE name = ?", pkg.Name).Scan(&pkgID)
+		if err != nil {
+			return 0, err
+		}
+		return pkgID, nil
+	}
+
+	return id, nil
+}
+
+// GetPHPPackage retrieves a PHP package by name
+func (db *DB) GetPHPPackage(name string) (*PHPPackage, error) {
+	var pkg PHPPackage
+	var authorsJSON, keywordsJSON, requireJSON sql.NullString
+
+	err := db.conn.QueryRow(`
+		SELECT id, name, version, description, type, license,
+			homepage, repository_url, packagist_url, downloads, stars,
+			authors_json, keywords_json, require_json, readme,
+			created_at, updated_at, indexed_at
+		FROM php_packages WHERE name = ?
+	`, name).Scan(&pkg.ID, &pkg.Name, &pkg.Version, &pkg.Description, &pkg.Type,
+		&pkg.License, &pkg.Homepage, &pkg.RepositoryURL, &pkg.PackagistURL,
+		&pkg.Downloads, &pkg.Stars, &authorsJSON, &keywordsJSON, &requireJSON,
+		&pkg.README, &pkg.CreatedAt, &pkg.UpdatedAt, &pkg.IndexedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if authorsJSON.Valid {
+		json.Unmarshal([]byte(authorsJSON.String), &pkg.Authors)
+	}
+	if keywordsJSON.Valid {
+		json.Unmarshal([]byte(keywordsJSON.String), &pkg.Keywords)
+	}
+	if requireJSON.Valid {
+		json.Unmarshal([]byte(requireJSON.String), &pkg.Require)
+	}
+
+	return &pkg, nil
+}
+
+// UpsertPHPSymbol inserts or updates a PHP symbol
+func (db *DB) UpsertPHPSymbol(sym *PHPSymbol) error {
+	_, err := db.conn.Exec(`
+		INSERT OR REPLACE INTO php_symbols
+		(name, kind, signature, package_id, package_name, file_path, line, public, doc)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, sym.Name, sym.Kind, sym.Signature, sym.PackageID, sym.PackageName,
+		sym.FilePath, sym.Line, sym.Public, sym.Doc)
+
+	return err
+}
+
+// DeletePHPPackageSymbols deletes all symbols for a PHP package
+func (db *DB) DeletePHPPackageSymbols(packageID int64) error {
+	_, err := db.conn.Exec("DELETE FROM php_symbols WHERE package_id = ?", packageID)
+	return err
+}
+
+// GetPHPPackageSymbols returns all public symbols for a PHP package
+func (db *DB) GetPHPPackageSymbols(packageID int64) ([]*PHPSymbol, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, package_id, package_name, file_path, line, public, doc
+		FROM php_symbols WHERE package_id = ? AND public = 1
+		ORDER BY kind, name
+	`, packageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*PHPSymbol
+	for rows.Next() {
+		sym := &PHPSymbol{}
+		var doc sql.NullString
+		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature, &sym.PackageID,
+			&sym.PackageName, &sym.FilePath, &sym.Line, &sym.Public, &doc); err != nil {
+			return nil, err
+		}
+		sym.Doc = doc.String
+		symbols = append(symbols, sym)
+	}
+	return symbols, rows.Err()
+}
+
+// SearchPHPPackages searches for PHP packages using FTS
+func (db *DB) SearchPHPPackages(query string, limit int) ([]*PHPPackage, error) {
+	if query == "" {
+		query = "*"
+	}
+
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, description, license, downloads, stars
+		FROM php_packages
+		WHERE id IN (
+			SELECT docid FROM php_packages_fts
+			WHERE php_packages_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []*PHPPackage
+	for rows.Next() {
+		pkg := &PHPPackage{}
+		if err := rows.Scan(&pkg.ID, &pkg.Name, &pkg.Version, &pkg.Description,
+			&pkg.License, &pkg.Downloads, &pkg.Stars); err != nil {
+			return nil, err
+		}
+		packages = append(packages, pkg)
+	}
+
+	return packages, nil
+}
+
+// SearchPHPSymbols searches for PHP symbols using FTS
+func (db *DB) SearchPHPSymbols(query string, limit int) ([]*PHPSymbol, error) {
+	if query == "" {
+		query = "*"
+	}
+
+	rows, err := db.conn.Query(`
+		SELECT id, name, kind, signature, package_name, file_path, line
+		FROM php_symbols
+		WHERE id IN (
+			SELECT docid FROM php_symbols_fts
+			WHERE php_symbols_fts MATCH ?
+			LIMIT ?
+		)
+	`, query, limit)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var symbols []*PHPSymbol
+	for rows.Next() {
+		sym := &PHPSymbol{}
 		if err := rows.Scan(&sym.ID, &sym.Name, &sym.Kind, &sym.Signature,
 			&sym.PackageName, &sym.FilePath, &sym.Line); err != nil {
 			return nil, err
