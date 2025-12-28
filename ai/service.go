@@ -102,6 +102,13 @@ func (s *Service) IsEnabled(flag FeatureFlag) bool {
 	return s.flags.IsEnabled(flag)
 }
 
+// Enable enables a feature flag
+func (s *Service) Enable(flag FeatureFlag) {
+	if s.flags != nil {
+		s.flags.Enable(flag)
+	}
+}
+
 // GenerateWithCache generates text using cache when possible
 func (s *Service) GenerateWithCache(flag FeatureFlag, systemPrompt, userPrompt string, maxTokens int) (string, error) {
 	// Check if feature is enabled

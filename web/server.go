@@ -144,6 +144,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 	s.aiService = ai.NewServiceFromEnv()
 	if s.aiService != nil {
 		s.aiService.SetBudget(5.0, 100.0) // $5/day, $100/month
+		s.aiService.Enable(ai.FlagExplainCode)
 		log.Printf("AI service initialized")
 	}
 
