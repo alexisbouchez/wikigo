@@ -2271,3 +2271,116 @@ func (db *DB) SearchPHPSymbols(query string, limit int) ([]*PHPSymbol, error) {
 
 	return symbols, nil
 }
+
+// GetPopularRustCrates returns popular Rust crates ordered by downloads
+func (db *DB) GetPopularRustCrates(limit int) ([]*RustCrate, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, description, license, downloads, repository
+		FROM rust_crates
+		ORDER BY downloads DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var crates []*RustCrate
+	for rows.Next() {
+		c := &RustCrate{}
+		var desc, license, repo sql.NullString
+		if err := rows.Scan(&c.ID, &c.Name, &c.Version, &desc, &license, &c.Downloads, &repo); err != nil {
+			return nil, err
+		}
+		c.Description = desc.String
+		c.License = license.String
+		c.Repository = repo.String
+		crates = append(crates, c)
+	}
+	return crates, nil
+}
+
+// GetPopularJSPackages returns popular JS packages ordered by stars
+func (db *DB) GetPopularJSPackages(limit int) ([]*JSPackage, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, description, license, stars, repository_url
+		FROM js_packages
+		ORDER BY stars DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []*JSPackage
+	for rows.Next() {
+		p := &JSPackage{}
+		var desc, license, repo sql.NullString
+		if err := rows.Scan(&p.ID, &p.Name, &p.Version, &desc, &license, &p.Stars, &repo); err != nil {
+			return nil, err
+		}
+		p.Description = desc.String
+		p.License = license.String
+		p.RepositoryURL = repo.String
+		packages = append(packages, p)
+	}
+	return packages, nil
+}
+
+// GetPopularPythonPackages returns popular Python packages ordered by downloads
+func (db *DB) GetPopularPythonPackages(limit int) ([]*PythonPackage, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, summary, license, downloads, home_page
+		FROM python_packages
+		ORDER BY downloads DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []*PythonPackage
+	for rows.Next() {
+		p := &PythonPackage{}
+		var summary, license, homepage sql.NullString
+		if err := rows.Scan(&p.ID, &p.Name, &p.Version, &summary, &license, &p.Downloads, &homepage); err != nil {
+			return nil, err
+		}
+		p.Summary = summary.String
+		p.License = license.String
+		p.HomePage = homepage.String
+		packages = append(packages, p)
+	}
+	return packages, nil
+}
+
+// GetPopularPHPPackages returns popular PHP packages ordered by downloads
+func (db *DB) GetPopularPHPPackages(limit int) ([]*PHPPackage, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, name, version, description, license, downloads, stars, repository_url
+		FROM php_packages
+		WHERE name != ''
+		ORDER BY downloads DESC, stars DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var packages []*PHPPackage
+	for rows.Next() {
+		p := &PHPPackage{}
+		var desc, license, repo sql.NullString
+		if err := rows.Scan(&p.ID, &p.Name, &p.Version, &desc, &license, &p.Downloads, &p.Stars, &repo); err != nil {
+			return nil, err
+		}
+		p.Description = desc.String
+		p.License = license.String
+		p.RepositoryURL = repo.String
+		packages = append(packages, p)
+	}
+	return packages, nil
+}

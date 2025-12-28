@@ -567,66 +567,63 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 
 // renderHome renders the home page
 func (s *Server) renderHome(w http.ResponseWriter, r *http.Request) {
-	// Get pagination params
-	page := 1
-	if p := r.URL.Query().Get("page"); p != "" {
-		if n, err := fmt.Sscanf(p, "%d", &page); err != nil || n != 1 || page < 1 {
-			page = 1
-		}
-	}
-
-	perPage := 100
-	offset := (page - 1) * perPage
-
-	// Convert map to sorted slice
-	var allPackages []*PackageDoc
+	// Get Go packages (standard library)
+	var goPackages []*PackageDoc
 	for _, pkg := range s.packages {
-		allPackages = append(allPackages, pkg)
+		goPackages = append(goPackages, pkg)
 	}
-
-	// Sort by import path
-	sort.Slice(allPackages, func(i, j int) bool {
-		return allPackages[i].ImportPath < allPackages[j].ImportPath
+	// Sort by import path (std lib first, then by name)
+	sort.Slice(goPackages, func(i, j int) bool {
+		return goPackages[i].ImportPath < goPackages[j].ImportPath
 	})
-
-	total := len(allPackages)
-	totalPages := (total + perPage - 1) / perPage
-	if totalPages < 1 {
-		totalPages = 1
+	// Limit to 12 for homepage
+	if len(goPackages) > 12 {
+		goPackages = goPackages[:12]
 	}
 
-	// Paginate
-	var packages []*PackageDoc
-	if offset < total {
-		end := offset + perPage
-		if end > total {
-			end = total
+	// Get popular packages from other ecosystems
+	var rustCrates []*db.RustCrate
+	var jsPackages []*db.JSPackage
+	var pythonPackages []*db.PythonPackage
+	var phpPackages []*db.PHPPackage
+
+	if s.db != nil {
+		// Rust crates - order by downloads
+		if crates, err := s.db.GetPopularRustCrates(8); err == nil {
+			rustCrates = crates
 		}
-		packages = allPackages[offset:end]
+		// JS packages - order by stars
+		if pkgs, err := s.db.GetPopularJSPackages(8); err == nil {
+			jsPackages = pkgs
+		}
+		// Python packages
+		if pkgs, err := s.db.GetPopularPythonPackages(8); err == nil {
+			pythonPackages = pkgs
+		}
+		// PHP packages
+		if pkgs, err := s.db.GetPopularPHPPackages(8); err == nil {
+			phpPackages = pkgs
+		}
 	}
 
 	data := struct {
-		Title       string
-		SearchQuery string
-		Pkg         *PackageDoc
-		Packages    []*PackageDoc
-		Page        int
-		TotalPages  int
-		Total       int
-		PerPage     int
-		HasPrev     bool
-		HasNext     bool
+		Title          string
+		SearchQuery    string
+		Pkg            *PackageDoc
+		GoPackages     []*PackageDoc
+		RustCrates     []*db.RustCrate
+		JSPackages     []*db.JSPackage
+		PythonPackages []*db.PythonPackage
+		PHPPackages    []*db.PHPPackage
 	}{
-		Title:       "Go Packages",
-		SearchQuery: "",
-		Pkg:         nil,
-		Packages:    packages,
-		Page:        page,
-		TotalPages:  totalPages,
-		Total:       total,
-		PerPage:     perPage,
-		HasPrev:     page > 1,
-		HasNext:     page < totalPages,
+		Title:          "Package Documentation",
+		SearchQuery:    "",
+		Pkg:            nil,
+		GoPackages:     goPackages,
+		RustCrates:     rustCrates,
+		JSPackages:     jsPackages,
+		PythonPackages: pythonPackages,
+		PHPPackages:    phpPackages,
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "home.html", data); err != nil {

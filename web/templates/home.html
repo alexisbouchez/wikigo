@@ -13,21 +13,64 @@
             </form>
         </div>
 
-        {{if .Packages}}
+        {{if .GoPackages}}
         <div class="PackageGrid">
             <h2 class="PackageGrid-title">
                 <span class="PackageGrid-icon PackageGrid-icon--go">Go</span>
-                Go Packages
+                Go Standard Library
             </h2>
             <div class="PackageGrid-list">
-                {{range $pkg := .Packages}}
+                {{range $pkg := .GoPackages}}
                 <a href="/{{$pkg.ImportPath}}" class="PackageCard">
                     <div class="PackageCard-header">
                         <span class="PackageCard-name">{{$pkg.Name}}</span>
-                        {{if $pkg.Version}}<span class="PackageCard-version">{{$pkg.Version}}</span>{{end}}
                     </div>
                     <p class="PackageCard-path">{{$pkg.ImportPath}}</p>
                     {{if $pkg.Synopsis}}<p class="PackageCard-synopsis">{{$pkg.Synopsis}}</p>{{end}}
+                </a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if .RustCrates}}
+        <div class="PackageGrid">
+            <h2 class="PackageGrid-title">
+                <span class="PackageGrid-icon PackageGrid-icon--rust">Rs</span>
+                Popular Rust Crates
+            </h2>
+            <div class="PackageGrid-list">
+                {{range $crate := .RustCrates}}
+                <a href="/crates/{{$crate.Name}}" class="PackageCard">
+                    <div class="PackageCard-header">
+                        <span class="PackageCard-name">{{$crate.Name}}</span>
+                        <span class="PackageCard-version">{{$crate.Version}}</span>
+                    </div>
+                    {{if $crate.Description}}<p class="PackageCard-synopsis">{{$crate.Description}}</p>{{end}}
+                    <div class="PackageCard-meta">
+                        {{if $crate.License}}<span class="PackageCard-license">{{$crate.License}}</span>{{end}}
+                        {{if $crate.Downloads}}<span class="PackageCard-downloads">{{$crate.Downloads}} downloads</span>{{end}}
+                    </div>
+                </a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if .JSPackages}}
+        <div class="PackageGrid">
+            <h2 class="PackageGrid-title">
+                <span class="PackageGrid-icon PackageGrid-icon--js">JS</span>
+                Popular npm Packages
+            </h2>
+            <div class="PackageGrid-list">
+                {{range $pkg := .JSPackages}}
+                <a href="/npm/{{$pkg.Name}}" class="PackageCard">
+                    <div class="PackageCard-header">
+                        <span class="PackageCard-name">{{$pkg.Name}}</span>
+                        <span class="PackageCard-version">{{$pkg.Version}}</span>
+                    </div>
+                    {{if $pkg.Description}}<p class="PackageCard-synopsis">{{$pkg.Description}}</p>{{end}}
                     <div class="PackageCard-meta">
                         {{if $pkg.License}}<span class="PackageCard-license">{{$pkg.License}}</span>{{end}}
                     </div>
@@ -35,9 +78,51 @@
                 {{end}}
             </div>
         </div>
-        {{else}}
-        <div class="EmptyState">
-            <p>No Go packages loaded yet.</p>
+        {{end}}
+
+        {{if .PythonPackages}}
+        <div class="PackageGrid">
+            <h2 class="PackageGrid-title">
+                <span class="PackageGrid-icon PackageGrid-icon--python">Py</span>
+                Popular PyPI Packages
+            </h2>
+            <div class="PackageGrid-list">
+                {{range $pkg := .PythonPackages}}
+                <a href="/pypi/{{$pkg.Name}}" class="PackageCard">
+                    <div class="PackageCard-header">
+                        <span class="PackageCard-name">{{$pkg.Name}}</span>
+                        <span class="PackageCard-version">{{$pkg.Version}}</span>
+                    </div>
+                    {{if $pkg.Summary}}<p class="PackageCard-synopsis">{{$pkg.Summary}}</p>{{end}}
+                    <div class="PackageCard-meta">
+                        {{if $pkg.License}}<span class="PackageCard-license">{{$pkg.License}}</span>{{end}}
+                    </div>
+                </a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if .PHPPackages}}
+        <div class="PackageGrid">
+            <h2 class="PackageGrid-title">
+                <span class="PackageGrid-icon PackageGrid-icon--php">PHP</span>
+                Popular Packagist Packages
+            </h2>
+            <div class="PackageGrid-list">
+                {{range $pkg := .PHPPackages}}
+                <a href="/packagist/{{$pkg.Name}}" class="PackageCard">
+                    <div class="PackageCard-header">
+                        <span class="PackageCard-name">{{$pkg.Name}}</span>
+                        <span class="PackageCard-version">{{$pkg.Version}}</span>
+                    </div>
+                    {{if $pkg.Description}}<p class="PackageCard-synopsis">{{$pkg.Description}}</p>{{end}}
+                    <div class="PackageCard-meta">
+                        {{if $pkg.License}}<span class="PackageCard-license">{{$pkg.License}}</span>{{end}}
+                    </div>
+                </a>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
