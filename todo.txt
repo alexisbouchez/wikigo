@@ -7,7 +7,7 @@
 - [x] Published date display
 - [x] License detection and display (BSD-3-Clause, MIT, etc.)
 - [x] Imports count with clickable popup showing import list
-- [ ] "Imported by" count (requires indexing ecosystem)
+- [x] "Imported by" count (requires indexing ecosystem)
 
 ### Navigation
 - [x] Breadcrumb navigation (Discover Packages > Standard library > net > http)
@@ -68,7 +68,7 @@
 ### Additional Pages
 - [x] License full text page
 - [x] Imports list page
-- [ ] Imported by page (paginated)
+- [x] Imported by page (paginated)
 - [x] Package versions list page
 - [x] Module page (go.mod info)
 
