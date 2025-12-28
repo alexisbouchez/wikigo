@@ -23,8 +23,8 @@
 - [ ] Expandable/collapsible example blocks
 
 ### Source Files Section
-- [ ] List all source files in package
-- [ ] Link each file to source browser with line count
+- [x] List all source files in package
+- [x] Link each file to source browser with line count
 
 ### Directories Section
 - [ ] Show subpackages/subdirectories
