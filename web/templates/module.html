@@ -1,0 +1,41 @@
+{{template "header" .}}
+<div class="Container">
+    <nav class="Breadcrumb">
+        <a href="/">Packages</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <a href="/{{.Pkg.ImportPath}}">{{.Pkg.ImportPath}}</a>
+        <span class="Breadcrumb-divider">&gt;</span>
+        <span class="Breadcrumb-current">Module</span>
+    </nav>
+
+    <div class="Module">
+        <h1 class="Module-title">Module Information</h1>
+
+        <div class="Module-info">
+            <div class="Module-row">
+                <span class="Module-label">Module Path:</span>
+                <code class="Module-value">{{.Pkg.ModulePath}}</code>
+            </div>
+            {{if .Pkg.GoVersion}}
+            <div class="Module-row">
+                <span class="Module-label">Go Version:</span>
+                <span class="Module-value">{{.Pkg.GoVersion}}</span>
+            </div>
+            {{end}}
+            {{if .Pkg.Repository}}
+            <div class="Module-row">
+                <span class="Module-label">Repository:</span>
+                <a href="{{.Pkg.Repository}}" target="_blank" class="Module-value">{{.Pkg.Repository}}</a>
+            </div>
+            {{end}}
+        </div>
+
+        <h2 class="Module-subtitle">go.mod</h2>
+        <pre class="Module-content"><code>{{.Pkg.GoModContent}}</code></pre>
+
+        <div class="Module-back">
+            <a href="/{{.Pkg.ImportPath}}">&larr; Back to {{.Pkg.Name}} package</a>
+        </div>
+    </div>
+</div>
+{{template "footer" .}}

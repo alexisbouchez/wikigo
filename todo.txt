@@ -70,7 +70,7 @@
 - [x] Imports list page
 - [ ] Imported by page (paginated)
 - [ ] Package versions list page
-- [ ] Module page (go.mod info)
+- [x] Module page (go.mod info)
 
 ### Performance & Polish
 - [ ] Lazy loading for large packages

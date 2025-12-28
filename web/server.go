@@ -31,6 +31,8 @@ type PackageDoc struct {
 	Repository       string     `json:"repository,omitempty"`
 	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
 	GoVersion        string     `json:"go_version,omitempty"`
+	ModulePath       string     `json:"module_path,omitempty"`
+	GoModContent     string     `json:"gomod_content,omitempty"`
 	GOOS             []string   `json:"goos,omitempty"`
 	GOARCH           []string   `json:"goarch,omitempty"`
 	Constants        []Constant `json:"constants"`
@@ -190,6 +192,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/badge/", s.handleBadge)
 	mux.HandleFunc("/license/", s.handleLicense)
 	mux.HandleFunc("/imports/", s.handleImports)
+	mux.HandleFunc("/mod/", s.handleModule)
 
 	log.Printf("Starting server on %s", addr)
 	return http.ListenAndServe(addr, mux)
@@ -583,6 +586,47 @@ func (s *Server) handleImports(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.templates.ExecuteTemplate(w, "imports.html", data); err != nil {
 		log.Printf("Error rendering imports: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleModule handles the module info page
+func (s *Server) handleModule(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/mod/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find package
+	pkg, ok := s.packages[path]
+	if !ok {
+		for importPath, p := range s.packages {
+			if strings.HasSuffix(importPath, "/"+path) || importPath == path {
+				pkg = p
+				ok = true
+				break
+			}
+		}
+	}
+
+	if !ok || pkg.GoModContent == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Title       string
+		SearchQuery string
+		Pkg         *PackageDoc
+	}{
+		Title:       "Module - " + pkg.ModulePath + " - Go Packages",
+		SearchQuery: "",
+		Pkg:         pkg,
+	}
+
+	if err := s.templates.ExecuteTemplate(w, "module.html", data); err != nil {
+		log.Printf("Error rendering module: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

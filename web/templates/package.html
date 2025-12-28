@@ -35,7 +35,7 @@
             <span class="Package-goVersion" title="Go version">Go {{.Pkg.GoVersion}}</span>
             {{end}}
             {{if .Pkg.HasValidMod}}
-            <span class="Package-validMod" title="Valid go.mod file">Valid go.mod</span>
+            <a href="/mod/{{.Pkg.ImportPath}}" class="Package-validMod" title="View go.mod">Valid go.mod</a>
             {{end}}
             {{if .Pkg.GOOS}}
             <span class="Package-platforms" title="Supported platforms">{{join .Pkg.GOOS ", "}}</span>

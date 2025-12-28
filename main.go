@@ -27,6 +27,8 @@ type PackageDoc struct {
 	Repository       string     `json:"repository,omitempty"`
 	HasValidMod      bool       `json:"has_valid_mod,omitempty"`
 	GoVersion        string     `json:"go_version,omitempty"`
+	ModulePath       string     `json:"module_path,omitempty"`
+	GoModContent     string     `json:"gomod_content,omitempty"`
 	GOOS             []string   `json:"goos,omitempty"`
 	GOARCH           []string   `json:"goarch,omitempty"`
 	Constants        []Constant `json:"constants"`
@@ -208,7 +210,7 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	repository := detectRepository(pkgPath, pkgDir)
 
 	// Detect go.mod info
-	hasValidMod, goVersion := detectGoMod(pkgDir)
+	hasValidMod, goVersion, modulePath, goModContent := detectGoMod(pkgDir)
 
 	// Build result
 	result := &PackageDoc{
@@ -222,6 +224,8 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 		Repository:      repository,
 		HasValidMod:     hasValidMod,
 		GoVersion:       goVersion,
+		ModulePath:      modulePath,
+		GoModContent:    goModContent,
 		Filenames:       filenames,
 	}
 
@@ -606,25 +610,25 @@ func isRedistributable(license string) bool {
 	return redistributable[license]
 }
 
-// detectGoMod checks for a valid go.mod and extracts Go version
-func detectGoMod(pkgDir string) (bool, string) {
+// detectGoMod checks for a valid go.mod and extracts Go version, module path, and content
+func detectGoMod(pkgDir string) (hasValidMod bool, goVersion string, modulePath string, goModContent string) {
 	currentDir := pkgDir
 	for i := 0; i < 10; i++ {
 		gomodPath := filepath.Join(currentDir, "go.mod")
 		content, err := os.ReadFile(gomodPath)
 		if err == nil {
-			hasModule := false
-			goVersion := ""
-			for _, line := range strings.Split(string(content), "\n") {
+			goModContent = string(content)
+			for _, line := range strings.Split(goModContent, "\n") {
 				line = strings.TrimSpace(line)
 				if strings.HasPrefix(line, "module ") {
-					hasModule = true
+					hasValidMod = true
+					modulePath = strings.TrimSpace(strings.TrimPrefix(line, "module "))
 				}
 				if strings.HasPrefix(line, "go ") {
 					goVersion = strings.TrimSpace(strings.TrimPrefix(line, "go "))
 				}
 			}
-			return hasModule, goVersion
+			return hasValidMod, goVersion, modulePath, goModContent
 		}
 		parent := filepath.Dir(currentDir)
 		if parent == currentDir {
@@ -632,7 +636,7 @@ func detectGoMod(pkgDir string) (bool, string) {
 		}
 		currentDir = parent
 	}
-	return false, ""
+	return false, "", "", ""
 }
 
 // detectRepository detects the repository URL from the import path or go.mod
