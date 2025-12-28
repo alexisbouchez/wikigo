@@ -108,6 +108,8 @@ func NewServer(dataDir string) (*Server, error) {
 		"anchorName":    anchorName,
 		"sourceLink":    sourceLink,
 		"split":         strings.Split,
+		"sub":           func(a, b int) int { return a - b },
+		"cond":          func(cond bool, t, f string) string { if cond { return t }; return f },
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templatesFS, "templates/*.html")

@@ -1,13 +1,20 @@
 {{template "header" .}}
 <div class="Package">
+    <nav class="Breadcrumb">
+        <a href="/">Packages</a>
+        {{$parts := split .Pkg.ImportPath "/"}}
+        {{$path := ""}}
+        {{range $i, $part := $parts}}
+        {{$path = printf "%s%s%s" $path (cond $i "/" "") $part}}
+        <span class="Breadcrumb-divider">&gt;</span>
+        {{if eq $i (sub (len $parts) 1)}}
+        <span class="Breadcrumb-current">{{$part}}</span>
+        {{else}}
+        <span>{{$part}}</span>
+        {{end}}
+        {{end}}
+    </nav>
     <div class="Package-header">
-        <div class="Package-breadcrumb">
-            {{$parts := split .Pkg.ImportPath "/"}}
-            {{range $i, $part := $parts}}
-                {{if $i}}<span class="Package-breadcrumbDivider">/</span>{{end}}
-                <span>{{$part}}</span>
-            {{end}}
-        </div>
         <h1 class="Package-title">package {{.Pkg.Name}}</h1>
         <div class="Package-badges">
             <span class="Badge">{{.Pkg.ImportPath}}</span>

@@ -223,6 +223,28 @@ code {
     color: var(--color-text-secondary);
 }
 
+/* Breadcrumb */
+.Breadcrumb {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.Breadcrumb a {
+    color: var(--color-link);
+}
+
+.Breadcrumb-divider {
+    margin: 0 0.5rem;
+    color: var(--color-text-secondary);
+}
+
+.Breadcrumb-current {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
 /* Package Page */
 .Package {
     max-width: var(--max-width);

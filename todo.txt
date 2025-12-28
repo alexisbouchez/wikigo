@@ -10,7 +10,7 @@
 - [ ] "Imported by" count (requires indexing ecosystem)
 
 ### Navigation
-- [ ] Breadcrumb navigation (Discover Packages > Standard library > net > http)
+- [x] Breadcrumb navigation (Discover Packages > Standard library > net > http)
 - [ ] Collapsible "Jump To" sidebar sections
 - [ ] Mobile-responsive hamburger menu
 - [ ] Sticky sidebar that scrolls with content
