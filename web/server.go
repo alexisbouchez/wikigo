@@ -344,32 +344,91 @@ func formatDocHTML(doc string) template.HTML {
 }
 
 func processDocLinks(text string) string {
-	// Simple link processing for [Name] references
+	// First, escape HTML but preserve our special markers
+	escaped := template.HTMLEscapeString(text)
+
+	// Process URLs first (before other processing)
+	escaped = autoLinkURLs(escaped)
+
+	// Process [Name] references
 	var result strings.Builder
 	i := 0
-	for i < len(text) {
-		if text[i] == '[' {
+	for i < len(escaped) {
+		if escaped[i] == '[' {
 			// Find closing bracket
 			j := i + 1
-			for j < len(text) && text[j] != ']' {
+			for j < len(escaped) && escaped[j] != ']' {
 				j++
 			}
-			if j < len(text) {
-				name := text[i+1 : j]
+			if j < len(escaped) {
+				name := escaped[i+1 : j]
 				// Create anchor link
 				result.WriteString(`<a href="#`)
 				result.WriteString(anchorName(name))
 				result.WriteString(`">`)
-				result.WriteString(template.HTMLEscapeString(name))
+				result.WriteString(name)
 				result.WriteString(`</a>`)
 				i = j + 1
 				continue
 			}
 		}
+		result.WriteByte(escaped[i])
+		i++
+	}
+	return result.String()
+}
+
+func autoLinkURLs(text string) string {
+	// Simple URL detection and auto-linking
+	var result strings.Builder
+	i := 0
+	for i < len(text) {
+		// Check for RFC references (RFC 1234)
+		if i+4 < len(text) && text[i:i+4] == "RFC " {
+			j := i + 4
+			// Find RFC number
+			for j < len(text) && text[j] >= '0' && text[j] <= '9' {
+				j++
+			}
+			if j > i+4 {
+				rfcNum := text[i+4 : j]
+				result.WriteString(`<a href="https://www.rfc-editor.org/rfc/rfc`)
+				result.WriteString(rfcNum)
+				result.WriteString(`" target="_blank">RFC `)
+				result.WriteString(rfcNum)
+				result.WriteString(`</a>`)
+				i = j
+				continue
+			}
+		}
+		// Check for http:// or https://
+		if i+7 < len(text) && (text[i:i+7] == "http://" || (i+8 < len(text) && text[i:i+8] == "https://")) {
+			// Find end of URL
+			j := i
+			for j < len(text) && !isURLTerminator(text[j]) {
+				j++
+			}
+			// Trim trailing punctuation
+			for j > i && (text[j-1] == '.' || text[j-1] == ',' || text[j-1] == ')' || text[j-1] == ';') {
+				j--
+			}
+			url := text[i:j]
+			result.WriteString(`<a href="`)
+			result.WriteString(url)
+			result.WriteString(`" target="_blank">`)
+			result.WriteString(url)
+			result.WriteString(`</a>`)
+			i = j
+			continue
+		}
 		result.WriteByte(text[i])
 		i++
 	}
 	return result.String()
+}
+
+func isURLTerminator(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '<' || c == '>'
 }
 
 func shortDoc(doc string) string {
