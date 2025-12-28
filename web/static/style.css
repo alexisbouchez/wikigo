@@ -354,6 +354,28 @@ code {
     border-radius: 0.25rem;
 }
 
+.Package-goVersion {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #00add8;
+    background: rgba(0, 173, 216, 0.1);
+    border-radius: 0.25rem;
+}
+
+.Package-validMod {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 0.25rem;
+}
+
 .Package-imports {
     display: inline-flex;
     align-items: center;

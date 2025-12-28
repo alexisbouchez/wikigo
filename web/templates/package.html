@@ -24,6 +24,12 @@
             {{if .Pkg.License}}
             <span class="Package-license" title="License">{{.Pkg.License}}</span>
             {{end}}
+            {{if .Pkg.GoVersion}}
+            <span class="Package-goVersion" title="Go version">Go {{.Pkg.GoVersion}}</span>
+            {{end}}
+            {{if .Pkg.HasValidMod}}
+            <span class="Package-validMod" title="Valid go.mod file">Valid go.mod</span>
+            {{end}}
             {{if .Pkg.Imports}}
             <button class="Package-imports" onclick="showImports()" title="View imports">
                 Imports: {{len .Pkg.Imports}}

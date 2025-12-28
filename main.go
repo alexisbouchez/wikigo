@@ -17,19 +17,21 @@ import (
 
 // PackageDoc represents complete documentation for a Go package
 type PackageDoc struct {
-	ImportPath string     `json:"import_path"`
-	Name       string     `json:"name"`
-	Doc        string     `json:"doc"`
-	Synopsis   string     `json:"synopsis"`
-	License    string     `json:"license,omitempty"`
-	Repository string     `json:"repository,omitempty"`
-	Constants  []Constant `json:"constants"`
-	Variables  []Variable `json:"variables"`
-	Functions  []Function `json:"functions"`
-	Types      []Type     `json:"types"`
-	Examples   []Example  `json:"examples"`
-	Imports    []string   `json:"imports"`
-	Filenames  []string   `json:"filenames"`
+	ImportPath   string     `json:"import_path"`
+	Name         string     `json:"name"`
+	Doc          string     `json:"doc"`
+	Synopsis     string     `json:"synopsis"`
+	License      string     `json:"license,omitempty"`
+	Repository   string     `json:"repository,omitempty"`
+	HasValidMod  bool       `json:"has_valid_mod,omitempty"`
+	GoVersion    string     `json:"go_version,omitempty"`
+	Constants    []Constant `json:"constants"`
+	Variables    []Variable `json:"variables"`
+	Functions    []Function `json:"functions"`
+	Types        []Type     `json:"types"`
+	Examples     []Example  `json:"examples"`
+	Imports      []string   `json:"imports"`
+	Filenames    []string   `json:"filenames"`
 }
 
 // Constant represents a documented constant
@@ -199,15 +201,20 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	// Detect repository
 	repository := detectRepository(pkgPath, pkgDir)
 
+	// Detect go.mod info
+	hasValidMod, goVersion := detectGoMod(pkgDir)
+
 	// Build result
 	result := &PackageDoc{
-		ImportPath: pkgPath,
-		Name:       docPkg.Name,
-		Doc:        docPkg.Doc,
-		Synopsis:   doc.Synopsis(docPkg.Doc),
-		License:    license,
-		Repository: repository,
-		Filenames:  filenames,
+		ImportPath:  pkgPath,
+		Name:        docPkg.Name,
+		Doc:         docPkg.Doc,
+		Synopsis:    doc.Synopsis(docPkg.Doc),
+		License:     license,
+		Repository:  repository,
+		HasValidMod: hasValidMod,
+		GoVersion:   goVersion,
+		Filenames:   filenames,
 	}
 
 	// Extract imports
@@ -563,6 +570,35 @@ func identifyLicense(content string) string {
 	}
 
 	return "Unknown"
+}
+
+// detectGoMod checks for a valid go.mod and extracts Go version
+func detectGoMod(pkgDir string) (bool, string) {
+	currentDir := pkgDir
+	for i := 0; i < 10; i++ {
+		gomodPath := filepath.Join(currentDir, "go.mod")
+		content, err := os.ReadFile(gomodPath)
+		if err == nil {
+			hasModule := false
+			goVersion := ""
+			for _, line := range strings.Split(string(content), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "module ") {
+					hasModule = true
+				}
+				if strings.HasPrefix(line, "go ") {
+					goVersion = strings.TrimSpace(strings.TrimPrefix(line, "go "))
+				}
+			}
+			return hasModule, goVersion
+		}
+		parent := filepath.Dir(currentDir)
+		if parent == currentDir {
+			break
+		}
+		currentDir = parent
+	}
+	return false, ""
 }
 
 // detectRepository detects the repository URL from the import path or go.mod

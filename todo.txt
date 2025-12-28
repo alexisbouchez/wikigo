@@ -33,7 +33,7 @@
 ## Medium Priority
 
 ### Quality Indicators
-- [ ] Valid go.mod file check
+- [x] Valid go.mod file check
 - [ ] Redistributable license badge
 - [ ] Tagged version indicator
 - [ ] Stable version indicator
