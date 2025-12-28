@@ -77,7 +77,7 @@
 - [x] Anchor link highlight animation
 - [x] Smooth scroll behavior
 - [ ] Print-friendly stylesheet
-- [ ] SEO meta tags (og:image, description, etc.)
+- [x] SEO meta tags (og:image, description, etc.)
 
 ### Advanced Features
 - [ ] Go Playground embed for runnable examples
