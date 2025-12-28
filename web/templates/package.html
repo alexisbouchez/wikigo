@@ -157,7 +157,17 @@
             <section class="Documentation" id="pkg-overview">
                 <h2 class="Documentation-title">Overview</h2>
                 <div class="Documentation-overview">
+                    {{if .Pkg.Doc}}
                     {{formatDocHTML .Pkg.Doc}}
+                    {{else}}
+                    {{$aiDocKey := printf "package:%s" .Pkg.Name}}
+                    {{if index $.AIDocs $aiDocKey}}
+                    <div class="Documentation-aiGenerated">
+                        <span class="AIBadge" title="AI-generated documentation">AI</span>
+                        <p>{{index $.AIDocs $aiDocKey}}</p>
+                    </div>
+                    {{end}}
+                    {{end}}
                 </div>
             </section>
 

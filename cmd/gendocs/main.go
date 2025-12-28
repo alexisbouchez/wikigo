@@ -70,6 +70,34 @@ func main() {
 
 		analyzer := ai.NewDocumentationAnalyzer(fset)
 
+		// Check if package needs synopsis
+		needsSynopsis := analyzer.FindUncommentedPackage(files)
+		if needsSynopsis {
+			log.Printf("Package %s needs synopsis", pkgName)
+			exportedSymbols := analyzer.ExtractExportedSymbols(files)
+
+			synopsis, err := service.GeneratePackageSynopsis(pkgName, exportedSymbols)
+			if err != nil {
+				log.Printf("Error generating synopsis for package %s: %v", pkgName, err)
+			} else {
+				if *dryRun {
+					fmt.Printf("\n// Package %s synopsis:\n// %s\n\n", pkgName, synopsis)
+				} else {
+					aiDoc := &db.AIDoc{
+						SymbolName:   pkgName,
+						SymbolKind:   "package",
+						ImportPath:   *packagePath,
+						GeneratedDoc: synopsis,
+					}
+					if err := database.UpsertAIDoc(aiDoc); err != nil {
+						log.Printf("Error saving synopsis for %s: %v", pkgName, err)
+					} else {
+						log.Printf("✓ Saved synopsis for package %s", pkgName)
+					}
+				}
+			}
+		}
+
 		// Find uncommented symbols
 		functions := analyzer.FindUncommentedFunctions(pkgName, files)
 		types := analyzer.FindUncommentedTypes(files)

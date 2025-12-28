@@ -145,9 +145,11 @@
   - Generate concise doc comments from function signature + body (ai/service.go)
   - Store generated comments separately (db.go ai_docs table, cmd/gendocs)
   - Display AI-generated docs in web UI with visual badge
-- [ ] Auto-generate missing package synopsis
-  - For packages without synopsis
-  - Use package name + exported symbols to generate
+- [x] Auto-generate missing package synopsis
+  - Detect packages without synopsis (ai/docgen.go)
+  - Extract exported symbols for context
+  - Generate synopsis via AI (ai/service.go)
+  - Display in package overview when missing
 - [ ] Enhance existing documentation
   - Detect sparse/unclear documentation
   - Suggest improvements or expansions

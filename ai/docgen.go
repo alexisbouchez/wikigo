@@ -170,6 +170,45 @@ func (da *DocumentationAnalyzer) FindUncommentedPackage(files []*ast.File) bool 
 	return true
 }
 
+// ExtractExportedSymbols extracts all exported symbol names from package files
+func (da *DocumentationAnalyzer) ExtractExportedSymbols(files []*ast.File) []string {
+	symbols := make(map[string]bool)
+
+	for _, file := range files {
+		ast.Inspect(file, func(n ast.Node) bool {
+			switch decl := n.(type) {
+			case *ast.FuncDecl:
+				if ast.IsExported(decl.Name.Name) {
+					symbols[decl.Name.Name] = true
+				}
+			case *ast.GenDecl:
+				for _, spec := range decl.Specs {
+					switch s := spec.(type) {
+					case *ast.TypeSpec:
+						if ast.IsExported(s.Name.Name) {
+							symbols[s.Name.Name] = true
+						}
+					case *ast.ValueSpec:
+						for _, name := range s.Names {
+							if ast.IsExported(name.Name) {
+								symbols[name.Name] = true
+							}
+						}
+					}
+				}
+			}
+			return true
+		})
+	}
+
+	// Convert map to slice
+	var result []string
+	for sym := range symbols {
+		result = append(result, sym)
+	}
+	return result
+}
+
 // extractFunctionSignature extracts the function signature as a string
 func (da *DocumentationAnalyzer) extractFunctionSignature(funcDecl *ast.FuncDecl) string {
 	var buf strings.Builder
