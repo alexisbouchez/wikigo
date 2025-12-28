@@ -9,8 +9,11 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -21,6 +24,8 @@ type PackageDoc struct {
 	Name             string     `json:"name"`
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
+	Version          string     `json:"version,omitempty"`
+	PublishedAt      string     `json:"published_at,omitempty"`
 	License          string     `json:"license,omitempty"`
 	LicenseText      string     `json:"license_text,omitempty"`
 	Redistributable  bool       `json:"redistributable,omitempty"`
@@ -212,12 +217,20 @@ func ExtractPackageDoc(pkgPath string) (*PackageDoc, error) {
 	// Detect go.mod info
 	hasValidMod, goVersion, modulePath, goModContent := detectGoMod(pkgDir)
 
+	// Detect version
+	version := detectVersion(pkgDir, modulePath)
+
+	// Detect published date (most recent file modification)
+	publishedAt := detectPublishedDate(filenames)
+
 	// Build result
 	result := &PackageDoc{
 		ImportPath:      pkgPath,
 		Name:            docPkg.Name,
 		Doc:             docPkg.Doc,
 		Synopsis:        doc.Synopsis(docPkg.Doc),
+		Version:         version,
+		PublishedAt:     publishedAt,
 		License:         license,
 		LicenseText:     licenseText,
 		Redistributable: isRedistributable(license),
@@ -757,4 +770,74 @@ func extractBuildConstraints(filenames []string) (goos []string, goarch []string
 	}
 
 	return goos, goarch
+}
+
+// detectVersion tries to detect the package version from git tags or go.mod
+func detectVersion(pkgDir string, modulePath string) string {
+	// First, try to get version from git tags
+	version := detectGitVersion(pkgDir)
+	if version != "" {
+		return version
+	}
+
+	// Check for version suffix in module path (e.g., /v2, /v3)
+	if modulePath != "" {
+		versionRegex := regexp.MustCompile(`/v(\d+)$`)
+		if matches := versionRegex.FindStringSubmatch(modulePath); len(matches) > 1 {
+			return "v" + matches[1] + ".x"
+		}
+	}
+
+	return ""
+}
+
+// detectGitVersion tries to get version from git describe
+func detectGitVersion(dir string) string {
+	// Try git describe to get the most recent tag
+	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err == nil {
+		version := strings.TrimSpace(string(output))
+		if version != "" {
+			return version
+		}
+	}
+
+	// Try to get the latest tag from git tag -l
+	cmd = exec.Command("git", "tag", "-l", "--sort=-v:refname")
+	cmd.Dir = dir
+	output, err = cmd.Output()
+	if err == nil {
+		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" && (strings.HasPrefix(line, "v") || regexp.MustCompile(`^\d+\.\d+`).MatchString(line)) {
+				return line
+			}
+		}
+	}
+
+	return ""
+}
+
+// detectPublishedDate returns the most recent modification time of the source files
+func detectPublishedDate(filenames []string) string {
+	var latestTime time.Time
+
+	for _, filename := range filenames {
+		info, err := os.Stat(filename)
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(latestTime) {
+			latestTime = info.ModTime()
+		}
+	}
+
+	if latestTime.IsZero() {
+		return ""
+	}
+
+	return latestTime.Format("Jan 2, 2006")
 }

@@ -25,6 +25,8 @@ type PackageDoc struct {
 	Name             string     `json:"name"`
 	Doc              string     `json:"doc"`
 	Synopsis         string     `json:"synopsis"`
+	Version          string     `json:"version,omitempty"`
+	PublishedAt      string     `json:"published_at,omitempty"`
 	License          string     `json:"license,omitempty"`
 	LicenseText      string     `json:"license_text,omitempty"`
 	Redistributable  bool       `json:"redistributable,omitempty"`

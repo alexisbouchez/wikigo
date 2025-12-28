@@ -21,6 +21,12 @@
             <button class="Package-copyBtn" onclick="copyImportPath(this)" data-path="{{.Pkg.ImportPath}}">Copy</button>
         </div>
         <div class="Package-meta">
+            {{if .Pkg.Version}}
+            <span class="Package-version" title="Version">{{.Pkg.Version}}</span>
+            {{end}}
+            {{if .Pkg.PublishedAt}}
+            <span class="Package-published" title="Published">Published: {{.Pkg.PublishedAt}}</span>
+            {{end}}
             {{if .Pkg.License}}
             {{if .Pkg.LicenseText}}
             <a href="/license/{{.Pkg.ImportPath}}" class="Package-license" title="View license">{{.Pkg.License}}</a>
