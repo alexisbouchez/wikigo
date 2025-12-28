@@ -419,6 +419,8 @@ function showAutocomplete(results) {
             langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--rust">Rust</span>';
         } else if (lang === 'js') {
             langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--js">JS</span>';
+        } else if (lang === 'python') {
+            langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--python">Python</span>';
         } else {
             langBadge = '<span class="SearchAutocomplete-lang SearchAutocomplete-lang--go">Go</span>';
         }
@@ -721,6 +723,10 @@ style.textContent = `
     .SearchAutocomplete-lang--js {
         background: #f7df1e;
         color: #1a1a1a;
+    }
+    .SearchAutocomplete-lang--python {
+        background: #3776ab;
+        color: white;
     }
     .SearchAutocomplete-path {
         font-family: var(--font-family-mono);
