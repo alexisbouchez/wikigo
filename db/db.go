@@ -150,57 +150,53 @@ func (db *DB) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_symbols_kind ON symbols(kind)`,
 		`CREATE INDEX IF NOT EXISTS idx_symbols_package ON symbols(package_id)`,
 
-		// Full-text search for packages
-		`CREATE VIRTUAL TABLE IF NOT EXISTS packages_fts USING fts5(
+		// Full-text search for packages using FTS4 (more widely supported)
+		`CREATE VIRTUAL TABLE IF NOT EXISTS packages_fts USING fts4(
 			import_path,
 			name,
 			synopsis,
 			doc,
-			content='packages',
-			content_rowid='id'
+			content="packages",
+			tokenize=porter
 		)`,
 
-		// Full-text search for symbols
-		`CREATE VIRTUAL TABLE IF NOT EXISTS symbols_fts USING fts5(
+		// Full-text search for symbols using FTS4
+		`CREATE VIRTUAL TABLE IF NOT EXISTS symbols_fts USING fts4(
 			name,
 			synopsis,
-			content='symbols',
-			content_rowid='id'
+			content="symbols",
+			tokenize=porter
 		)`,
 
 		// Triggers to keep FTS in sync with packages
 		`CREATE TRIGGER IF NOT EXISTS packages_ai AFTER INSERT ON packages BEGIN
-			INSERT INTO packages_fts(rowid, import_path, name, synopsis, doc)
+			INSERT INTO packages_fts(docid, import_path, name, synopsis, doc)
 			VALUES (new.id, new.import_path, new.name, new.synopsis, new.doc);
 		END`,
 
 		`CREATE TRIGGER IF NOT EXISTS packages_ad AFTER DELETE ON packages BEGIN
-			INSERT INTO packages_fts(packages_fts, rowid, import_path, name, synopsis, doc)
-			VALUES ('delete', old.id, old.import_path, old.name, old.synopsis, old.doc);
+			DELETE FROM packages_fts WHERE docid = old.id;
 		END`,
 
 		`CREATE TRIGGER IF NOT EXISTS packages_au AFTER UPDATE ON packages BEGIN
-			INSERT INTO packages_fts(packages_fts, rowid, import_path, name, synopsis, doc)
-			VALUES ('delete', old.id, old.import_path, old.name, old.synopsis, old.doc);
-			INSERT INTO packages_fts(rowid, import_path, name, synopsis, doc)
+			DELETE FROM packages_fts WHERE docid = old.id;
+			INSERT INTO packages_fts(docid, import_path, name, synopsis, doc)
 			VALUES (new.id, new.import_path, new.name, new.synopsis, new.doc);
 		END`,
 
 		// Triggers to keep FTS in sync with symbols
 		`CREATE TRIGGER IF NOT EXISTS symbols_ai AFTER INSERT ON symbols BEGIN
-			INSERT INTO symbols_fts(rowid, name, synopsis)
+			INSERT INTO symbols_fts(docid, name, synopsis)
 			VALUES (new.id, new.name, new.synopsis);
 		END`,
 
 		`CREATE TRIGGER IF NOT EXISTS symbols_ad AFTER DELETE ON symbols BEGIN
-			INSERT INTO symbols_fts(symbols_fts, rowid, name, synopsis)
-			VALUES ('delete', old.id, old.name, old.synopsis);
+			DELETE FROM symbols_fts WHERE docid = old.id;
 		END`,
 
 		`CREATE TRIGGER IF NOT EXISTS symbols_au AFTER UPDATE ON symbols BEGIN
-			INSERT INTO symbols_fts(symbols_fts, rowid, name, synopsis)
-			VALUES ('delete', old.id, old.name, old.synopsis);
-			INSERT INTO symbols_fts(rowid, name, synopsis)
+			DELETE FROM symbols_fts WHERE docid = old.id;
+			INSERT INTO symbols_fts(docid, name, synopsis)
 			VALUES (new.id, new.name, new.synopsis);
 		END`,
 	}
@@ -355,9 +351,8 @@ func (db *DB) SearchPackages(query string, limit int) ([]*Package, error) {
 			p.is_tagged, p.is_stable, p.license, p.redistributable,
 			p.repository, p.module_path
 		FROM packages p
-		JOIN packages_fts fts ON p.id = fts.rowid
+		JOIN packages_fts fts ON p.id = fts.docid
 		WHERE packages_fts MATCH ?
-		ORDER BY rank
 		LIMIT ?
 	`, query, limit)
 	if err != nil {
@@ -479,18 +474,16 @@ func (db *DB) SearchSymbols(query, kind string, limit int) ([]*Symbol, error) {
 		rows, err = db.conn.Query(`
 			SELECT s.id, s.name, s.kind, s.package_id, s.import_path, s.synopsis, s.deprecated
 			FROM symbols s
-			JOIN symbols_fts fts ON s.id = fts.rowid
+			JOIN symbols_fts fts ON s.id = fts.docid
 			WHERE symbols_fts MATCH ? AND s.kind = ?
-			ORDER BY rank
 			LIMIT ?
 		`, query, kind, limit)
 	} else {
 		rows, err = db.conn.Query(`
 			SELECT s.id, s.name, s.kind, s.package_id, s.import_path, s.synopsis, s.deprecated
 			FROM symbols s
-			JOIN symbols_fts fts ON s.id = fts.rowid
+			JOIN symbols_fts fts ON s.id = fts.docid
 			WHERE symbols_fts MATCH ?
-			ORDER BY rank
 			LIMIT ?
 		`, query, limit)
 	}
