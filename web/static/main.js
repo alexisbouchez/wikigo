@@ -1,5 +1,24 @@
 // Main JavaScript for wikigo
 
+// Theme toggle
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
+
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+    }
+}
+
 function copyImportPath(btn) {
     const path = btn.dataset.path;
     navigator.clipboard.writeText(path).then(() => {
@@ -9,6 +28,12 @@ function copyImportPath(btn) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Theme toggle button
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+
     // Initialize Prism syntax highlighting
     if (typeof Prism !== 'undefined') {
         Prism.highlightAll();

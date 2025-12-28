@@ -48,7 +48,7 @@
 ### UI Enhancements
 - [x] Copy button for package import path
 - [x] Copy button for code blocks
-- [ ] Dark mode toggle
+- [x] Dark mode toggle
 - [x] Keyboard shortcuts (/ for search, etc.)
 - [ ] Expand/collapse all types in index
 

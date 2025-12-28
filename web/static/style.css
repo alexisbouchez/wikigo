@@ -19,6 +19,18 @@
     --nav-width: 16.5rem;
 }
 
+[data-theme="dark"] {
+    --color-brand: #00add8;
+    --color-brand-dark: #00d4ff;
+    --color-text: #e1e1e1;
+    --color-text-secondary: #a0a0a0;
+    --color-background: #1a1a1a;
+    --color-background-secondary: #252525;
+    --color-border: #3a3a3a;
+    --color-link: #00add8;
+    --color-code-bg: #2d2d2d;
+}
+
 html {
     font-size: 16px;
     line-height: 1.5;
@@ -151,6 +163,38 @@ code {
 
 .SearchForm-submit:hover {
     background: #006880;
+}
+
+/* Theme Toggle */
+.ThemeToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    color: var(--color-text);
+    margin-left: 0.75rem;
+}
+
+.ThemeToggle:hover {
+    background: var(--color-background-secondary);
+}
+
+.ThemeToggle-moon {
+    display: none;
+}
+
+[data-theme="dark"] .ThemeToggle-sun {
+    display: none;
+}
+
+[data-theme="dark"] .ThemeToggle-moon {
+    display: block;
 }
 
 /* Main */
