@@ -100,3 +100,26 @@
 - [x] JSON API for package metadata
 - [x] Search API endpoint
 - [x] Badge generation endpoint (shields.io compatible)
+
+## Code Quality & Performance Improvements
+
+### Testing
+- [x] Database operations tests (upsert, search, FTS)
+- [x] Crawler tests (version parsing, license detection)
+- [x] GitHub Actions CI/CD workflow
+
+### Performance
+- [x] Database-backed search (replaces O(n) linear search)
+- [x] Database-backed symbol search (FTS indexes)
+- [x] Extract FindPackage() helper (eliminates code duplication)
+
+### Error Handling
+- [x] Fix JSON unmarshal error checks in db.go
+- [x] Add error logging to web handlers
+
+### Future Improvements
+- [ ] Add pagination to search results
+- [ ] Add pagination to home page package list
+- [ ] Add caching for search results
+- [ ] Add web handler tests
+- [ ] Consolidate duplicate helper functions across packages
