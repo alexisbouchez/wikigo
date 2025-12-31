@@ -289,6 +289,17 @@ Return ONLY the improved doc text.`, symbolType, symbolName, signature, existing
 	return s.GenerateWithCache(FlagEnhanceDocs, systemPrompt, userPrompt, 200)
 }
 
+// TranslateDocumentation translates documentation to another language
+func (s *Service) TranslateDocumentation(doc, targetLanguage string) (string, error) {
+	systemPrompt := fmt.Sprintf(`You are a technical translator. Translate the following Go documentation to %s.
+Keep technical terms and code identifiers in English. Maintain the original meaning and tone.
+Return ONLY the translated text without any explanations.`, targetLanguage)
+
+	userPrompt := doc
+
+	return s.GenerateWithCache(FlagDocTranslation, systemPrompt, userPrompt, 500)
+}
+
 // IsDocSparse checks if documentation is sparse and could benefit from enhancement
 func IsDocSparse(doc string) bool {
 	if doc == "" {

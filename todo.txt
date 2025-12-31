@@ -187,9 +187,10 @@
   - Generate plain-English summaries of licenses
   - API endpoint /api/license-summary
   - "Summarize with AI" button on license pages
-- [ ] Documentation translation
-  - Translate docs to other languages
-  - Cache translations per package version
+- [x] Documentation translation
+  - TranslateDocumentation method in ai/service.go
+  - API endpoint /api/translate
+  - Caching via AI service cache layer
 
 #### Quality & Safety
 - [ ] Hallucination detection

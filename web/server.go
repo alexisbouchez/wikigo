@@ -155,6 +155,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 		s.aiService.Enable(ai.FlagSemanticSearch)
 		s.aiService.Enable(ai.FlagQueryUnderstanding)
 		s.aiService.Enable(ai.FlagAutoExamples)
+		s.aiService.Enable(ai.FlagDocTranslation)
 		log.Printf("AI service initialized")
 	}
 
@@ -551,6 +552,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/semantic-search", s.rateLimiter.Middleware(s.handleSemanticSearch))
 	mux.HandleFunc("/api/understand-query", s.rateLimiter.Middleware(s.handleUnderstandQuery))
 	mux.HandleFunc("/api/generate-example", s.rateLimiter.Middleware(s.handleGenerateExample))
+	mux.HandleFunc("/api/translate", s.rateLimiter.Middleware(s.handleTranslate))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2877,6 +2879,51 @@ func (s *Server) handleGenerateExample(w http.ResponseWriter, r *http.Request) {
 		"imports":         example.Imports,
 		"code":            example.Code,
 		"playground_code": example.BuildPlaygroundCode(),
+	})
+}
+
+// handleTranslate handles AI-powered documentation translation
+func (s *Server) handleTranslate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagDocTranslation) {
+		http.Error(w, "Translation service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Text     string `json:"text"`
+		Language string `json:"language"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Text == "" || req.Language == "" {
+		http.Error(w, "text and language are required", http.StatusBadRequest)
+		return
+	}
+
+	// Translate
+	translated, err := s.aiService.TranslateDocumentation(req.Text, req.Language)
+	if err != nil {
+		log.Printf("Error translating: %v", err)
+		http.Error(w, "Failed to translate", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"original":   req.Text,
+		"translated": translated,
+		"language":   req.Language,
 	})
 }
 

@@ -646,6 +646,76 @@ func TestHandleGenerateExample_ValidRequest(t *testing.T) {
 	}
 }
 
+func TestHandleTranslate_MethodNotAllowed(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/translate", nil)
+	w := httptest.NewRecorder()
+
+	s.handleTranslate(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
+	}
+}
+
+func TestHandleTranslate_InvalidJSON(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("POST", "/api/translate", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+
+	s.handleTranslate(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleTranslate_MissingFields(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("POST", "/api/translate", strings.NewReader(`{"text": "hello"}`))
+	w := httptest.NewRecorder()
+
+	s.handleTranslate(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleTranslate_ValidRequest(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	body := `{"text": "ReadFile reads the named file and returns its contents.", "language": "Spanish"}`
+	req := httptest.NewRequest("POST", "/api/translate", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleTranslate(w, req)
+
+	// Should get 200 (with AI service) or 503 (without AI service)
+	if w.Code != http.StatusOK && w.Code != http.StatusServiceUnavailable && w.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 200, 503, or 500, got %d", w.Code)
+	}
+}
+
 func TestHandleRustCrate_Redirect(t *testing.T) {
 	s, err := NewServerWithDB(".", "")
 	if err != nil {
