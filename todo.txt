@@ -178,9 +178,10 @@
   - Explain button on functions and methods
   - Modal display with syntax highlighting
   - Integrated with Mistral AI service
-- [ ] License summarization
+- [x] License summarization
   - Generate plain-English summaries of licenses
-  - Highlight key terms (attribution, redistribution, etc.)
+  - API endpoint /api/license-summary
+  - "Summarize with AI" button on license pages
 - [ ] Documentation translation
   - Translate docs to other languages
   - Cache translations per package version

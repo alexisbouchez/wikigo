@@ -150,6 +150,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 	if s.aiService != nil {
 		s.aiService.SetBudget(5.0, 100.0) // $5/day, $100/month
 		s.aiService.Enable(ai.FlagExplainCode)
+		s.aiService.Enable(ai.FlagLicenseSummary)
 		log.Printf("AI service initialized")
 	}
 
@@ -541,6 +542,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/diff/", s.handleDiff)
 	mux.HandleFunc("/compare/", s.handleCompare)
 	mux.HandleFunc("/api/explain", s.rateLimiter.Middleware(s.handleExplain))
+	mux.HandleFunc("/api/license-summary", s.rateLimiter.Middleware(s.handleLicenseSummary))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2590,5 +2592,52 @@ func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"explanation": explanation,
+	})
+}
+
+// handleLicenseSummary handles AI-powered license summarization
+func (s *Server) handleLicenseSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagLicenseSummary) {
+		http.Error(w, "License summary service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request
+	var req struct {
+		LicenseText string `json:"license_text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.LicenseText == "" {
+		http.Error(w, "License text is required", http.StatusBadRequest)
+		return
+	}
+
+	// Limit license text to prevent abuse
+	if len(req.LicenseText) > 50000 {
+		req.LicenseText = req.LicenseText[:50000]
+	}
+
+	// Generate summary
+	summary, err := s.aiService.SummarizeLicense(req.LicenseText)
+	if err != nil {
+		log.Printf("Error summarizing license: %v", err)
+		http.Error(w, "Failed to generate summary", http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"summary": summary,
 	})
 }

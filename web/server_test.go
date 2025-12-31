@@ -356,6 +356,63 @@ func TestHandleExplain_EmptyCode(t *testing.T) {
 	}
 }
 
+func TestHandleLicenseSummary_MethodNotAllowed(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/license-summary", nil)
+	w := httptest.NewRecorder()
+
+	s.handleLicenseSummary(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
+	}
+}
+
+func TestHandleLicenseSummary_EmptyLicense(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	body := strings.NewReader(`{"license_text": ""}`)
+	req := httptest.NewRequest("POST", "/api/license-summary", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleLicenseSummary(w, req)
+
+	// Empty license should return 400 (if AI is enabled) or 503 (if not)
+	if w.Code != http.StatusBadRequest && w.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected status 400 or 503, got %d", w.Code)
+	}
+}
+
+func TestHandleLicenseSummary_InvalidJSON(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	body := strings.NewReader(`invalid json`)
+	req := httptest.NewRequest("POST", "/api/license-summary", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleLicenseSummary(w, req)
+
+	// Invalid JSON should return 400 or 503
+	if w.Code != http.StatusBadRequest && w.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected status 400 or 503, got %d", w.Code)
+	}
+}
+
 func TestHandleRustCrate_Redirect(t *testing.T) {
 	s, err := NewServerWithDB(".", "")
 	if err != nil {
