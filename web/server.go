@@ -946,6 +946,8 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// Sort by relevance
+			results = sortByRelevance(query, results)
 			s.searchCache.Set(cacheKey, results)
 			json.NewEncoder(w).Encode(results)
 			return
@@ -965,6 +967,8 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
+		// Sort by relevance
+		results = sortByRelevance(query, results)
 		s.searchCache.Set(cacheKey, results)
 		json.NewEncoder(w).Encode(results)
 		return
