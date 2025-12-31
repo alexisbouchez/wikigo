@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/alexisbouchez/wikigo/ai"
 	"github.com/alexisbouchez/wikigo/db"
@@ -111,11 +112,12 @@ type Example struct {
 
 // Server represents the documentation web server
 type Server struct {
-	packages   map[string]*PackageDoc
-	templates  *template.Template
-	dataDir    string
-	db         *db.DB        // optional database for indexing
-	aiService  *ai.Service   // optional AI service for code explanations
+	packages    map[string]*PackageDoc
+	templates   *template.Template
+	dataDir     string
+	db          *db.DB        // optional database for indexing
+	aiService   *ai.Service   // optional AI service for code explanations
+	searchCache *Cache        // cache for search results
 }
 
 // NewServer creates a new documentation server
@@ -126,8 +128,9 @@ func NewServer(dataDir string) (*Server, error) {
 // NewServerWithDB creates a new documentation server with optional SQLite database
 func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 	s := &Server{
-		packages: make(map[string]*PackageDoc),
-		dataDir:  dataDir,
+		packages:    make(map[string]*PackageDoc),
+		dataDir:     dataDir,
+		searchCache: NewCache(5 * time.Minute), // 5 minute TTL for search results
 	}
 
 	// Open database if path provided
@@ -838,6 +841,13 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check cache first
+		cacheKey := "api:search:" + query + ":" + lang
+		if cached, ok := s.searchCache.Get(cacheKey); ok {
+			json.NewEncoder(w).Encode(cached)
+			return
+		}
+
 		var results []map[string]interface{}
 
 		// Use database search if available
@@ -934,6 +944,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			s.searchCache.Set(cacheKey, results)
 			json.NewEncoder(w).Encode(results)
 			return
 		}
@@ -952,6 +963,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
+		s.searchCache.Set(cacheKey, results)
 		json.NewEncoder(w).Encode(results)
 		return
 	}
