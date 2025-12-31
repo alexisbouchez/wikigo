@@ -151,6 +151,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 		s.aiService.SetBudget(5.0, 100.0) // $5/day, $100/month
 		s.aiService.Enable(ai.FlagExplainCode)
 		s.aiService.Enable(ai.FlagLicenseSummary)
+		s.aiService.Enable(ai.FlagEnhanceDocs)
 		log.Printf("AI service initialized")
 	}
 
@@ -543,6 +544,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/compare/", s.handleCompare)
 	mux.HandleFunc("/api/explain", s.rateLimiter.Middleware(s.handleExplain))
 	mux.HandleFunc("/api/license-summary", s.rateLimiter.Middleware(s.handleLicenseSummary))
+	mux.HandleFunc("/api/enhance-doc", s.rateLimiter.Middleware(s.handleEnhanceDoc))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2592,6 +2594,52 @@ func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"explanation": explanation,
+	})
+}
+
+// handleEnhanceDoc handles AI-powered documentation enhancement
+func (s *Server) handleEnhanceDoc(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagEnhanceDocs) {
+		http.Error(w, "Documentation enhancement service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request
+	var req struct {
+		Name      string `json:"name"`
+		Type      string `json:"type"`      // "function", "type", "method"
+		Doc       string `json:"doc"`       // existing documentation
+		Signature string `json:"signature"` // function/type signature
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" || req.Type == "" {
+		http.Error(w, "Name and type are required", http.StatusBadRequest)
+		return
+	}
+
+	// Generate enhanced documentation
+	enhanced, err := s.aiService.EnhanceDocumentation(req.Name, req.Type, req.Doc, req.Signature)
+	if err != nil {
+		log.Printf("Error enhancing documentation: %v", err)
+		http.Error(w, "Failed to enhance documentation", http.StatusInternalServerError)
+		return
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"enhanced_doc": enhanced,
+		"is_sparse":    ai.IsDocSparse(req.Doc),
 	})
 }
 

@@ -264,3 +264,34 @@ Return ONLY the comment text, without code fences or additional explanation.`, t
 
 	return s.GenerateWithCache(FlagAutoComments, systemPrompt, userPrompt, 100)
 }
+
+// EnhanceDocumentation improves existing sparse documentation
+func (s *Service) EnhanceDocumentation(symbolName, symbolType, existingDoc, signature string) (string, error) {
+	systemPrompt := "You are a Go documentation expert. Improve sparse or unclear documentation while keeping it concise. Follow Go conventions."
+
+	userPrompt := fmt.Sprintf(`Enhance this Go %s documentation:
+
+Name: %s
+Signature: %s
+Current doc: %s
+
+Provide improved documentation that:
+1. Starts with the symbol name
+2. Explains what it does clearly
+3. Mentions important parameters/returns if applicable
+4. Stays under 3 sentences
+
+Return ONLY the improved doc text.`, symbolType, symbolName, signature, existingDoc)
+
+	return s.GenerateWithCache(FlagEnhanceDocs, systemPrompt, userPrompt, 200)
+}
+
+// IsDocSparse checks if documentation is sparse and could benefit from enhancement
+func IsDocSparse(doc string) bool {
+	if doc == "" {
+		return true
+	}
+	// Consider doc sparse if it's very short or lacks detail
+	words := len(doc) / 5 // rough word count
+	return words < 5
+}

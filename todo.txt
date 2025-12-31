@@ -150,10 +150,10 @@
   - Extract exported symbols for context
   - Generate synopsis via AI (ai/service.go)
   - Display in package overview when missing
-- [ ] Enhance existing documentation
-  - Detect sparse/unclear documentation
-  - Suggest improvements or expansions
-  - Add examples where missing
+- [x] Enhance existing documentation
+  - AI function to detect sparse docs (ai.IsDocSparse)
+  - EnhanceDocumentation method in AI service
+  - API endpoint /api/enhance-doc
 
 #### Search Enhancement
 - [ ] Semantic search using embeddings
