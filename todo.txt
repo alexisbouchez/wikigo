@@ -172,9 +172,10 @@
   - Simple example showing typical usage (ai/service.go GenerateExample)
   - Store in database (db/db.go generated_examples table)
   - API endpoint /api/generate-example with DB caching
-- [ ] Generate runnable playground links
-  - Create minimal working examples
-  - Auto-populate Go Playground
+- [x] Generate runnable playground links
+  - BuildPlaygroundCode method generates full runnable programs
+  - API returns playground_code in response
+  - Tests in ai/service_test.go
 
 #### User-Facing Features
 - [x] AI-powered "Explain this code" button

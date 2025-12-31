@@ -2826,13 +2826,22 @@ func (s *Server) handleGenerateExample(w http.ResponseWriter, r *http.Request) {
 	if s.db != nil {
 		cached, err := s.db.GetGeneratedExample(req.ImportPath, req.FunctionName)
 		if err == nil && cached != nil {
+			// Build full playground code from cached example
+			aiExample := &ai.GeneratedExample{
+				FunctionName: cached.FunctionName,
+				ImportPath:   cached.ImportPath,
+				Description:  cached.Description,
+				Imports:      cached.Imports,
+				Code:         cached.Code,
+			}
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"function_name": cached.FunctionName,
-				"import_path":   cached.ImportPath,
-				"description":   cached.Description,
-				"imports":       cached.Imports,
-				"code":          cached.Code,
-				"cached":        true,
+				"function_name":   cached.FunctionName,
+				"import_path":     cached.ImportPath,
+				"description":     cached.Description,
+				"imports":         cached.Imports,
+				"code":            cached.Code,
+				"playground_code": aiExample.BuildPlaygroundCode(),
+				"cached":          true,
 			})
 			return
 		}
@@ -2861,7 +2870,14 @@ func (s *Server) handleGenerateExample(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(example)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"function_name":   example.FunctionName,
+		"import_path":     example.ImportPath,
+		"description":     example.Description,
+		"imports":         example.Imports,
+		"code":            example.Code,
+		"playground_code": example.BuildPlaygroundCode(),
+	})
 }
 
 // handleEnhanceDoc handles AI-powered documentation enhancement

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -482,6 +483,39 @@ Documentation: %s`, importPath, functionName, signature, doc)
 	result.Code = parsed.Code
 
 	return result, nil
+}
+
+// BuildPlaygroundCode builds a full runnable Go program from a generated example
+func (e *GeneratedExample) BuildPlaygroundCode() string {
+	var sb strings.Builder
+	sb.WriteString("package main\n\n")
+
+	// Add imports
+	if e.Imports != "" {
+		sb.WriteString("import (\n")
+		for _, line := range strings.Split(e.Imports, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				// Remove "import" keyword if present
+				line = strings.TrimPrefix(line, "import ")
+				line = strings.Trim(line, "()")
+				if !strings.HasPrefix(line, "\"") {
+					line = "\"" + line + "\""
+				}
+				sb.WriteString("\t" + line + "\n")
+			}
+		}
+		sb.WriteString(")\n\n")
+	}
+
+	// Add main function with the example code
+	sb.WriteString("func main() {\n")
+	for _, line := range strings.Split(e.Code, "\n") {
+		sb.WriteString("\t" + line + "\n")
+	}
+	sb.WriteString("}\n")
+
+	return sb.String()
 }
 
 // CosineSimilarity computes cosine similarity between two vectors
