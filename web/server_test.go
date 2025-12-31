@@ -470,6 +470,54 @@ func TestHandleEnhanceDoc_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestHandleSemanticSearch_EmptyQuery(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/semantic-search", nil)
+	w := httptest.NewRecorder()
+
+	s.handleSemanticSearch(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Errorf("failed to parse JSON: %v", err)
+	}
+
+	if result["error"] != "query is required" {
+		t.Errorf("expected error about missing query")
+	}
+}
+
+func TestHandleSemanticSearch_WithQuery(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/semantic-search?q=http+client", nil)
+	w := httptest.NewRecorder()
+
+	s.handleSemanticSearch(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	contentType := w.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %s", contentType)
+	}
+}
+
 func TestHandleRustCrate_Redirect(t *testing.T) {
 	s, err := NewServerWithDB(".", "")
 	if err != nil {

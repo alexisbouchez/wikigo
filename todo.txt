@@ -156,10 +156,11 @@
   - API endpoint /api/enhance-doc
 
 #### Search Enhancement
-- [ ] Semantic search using embeddings
-  - Generate embeddings for package descriptions
-  - Allow natural language queries ("find HTTP client libraries")
-  - Hybrid search: FTS + semantic similarity
+- [x] Semantic search using embeddings
+  - Embedding generation via Mistral API (ai/mistral.go)
+  - Embeddings table in database (db/db.go)
+  - API endpoint /api/semantic-search
+  - Cosine similarity scoring
 - [ ] Query understanding
   - Interpret vague queries
   - Suggest related packages

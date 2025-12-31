@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"time"
 )
@@ -294,4 +295,35 @@ func IsDocSparse(doc string) bool {
 	// Consider doc sparse if it's very short or lacks detail
 	words := len(doc) / 5 // rough word count
 	return words < 5
+}
+
+// GenerateEmbedding generates an embedding for text (used for semantic search)
+func (s *Service) GenerateEmbedding(text string) ([]float32, error) {
+	if !s.IsEnabled(FlagSemanticSearch) {
+		return nil, fmt.Errorf("semantic search is not enabled")
+	}
+	if s.client == nil {
+		return nil, fmt.Errorf("AI client not initialized")
+	}
+	return s.client.GenerateEmbedding(text)
+}
+
+// CosineSimilarity computes cosine similarity between two vectors
+func CosineSimilarity(a, b []float32) float32 {
+	if len(a) != len(b) || len(a) == 0 {
+		return 0
+	}
+
+	var dotProduct, normA, normB float32
+	for i := range a {
+		dotProduct += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+
+	return dotProduct / (float32(math.Sqrt(float64(normA))) * float32(math.Sqrt(float64(normB))))
 }

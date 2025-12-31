@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -89,6 +91,16 @@ type AIDoc struct {
 	Tokens       int       `json:"tokens"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// Embedding represents a stored embedding for semantic search
+type Embedding struct {
+	ID         int64     `json:"id"`
+	ImportPath string    `json:"import_path"`
+	Lang       string    `json:"lang"`
+	TextHash   string    `json:"text_hash"`
+	Embedding  []float32 `json:"embedding"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Open opens or creates a SQLite database
@@ -653,6 +665,19 @@ func (db *DB) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_php_packages_name ON php_packages(name)`,
 		`CREATE INDEX IF NOT EXISTS idx_php_symbols_package ON php_symbols(package_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_php_symbols_public ON php_symbols(public)`,
+
+		// Embeddings table for semantic search
+		`CREATE TABLE IF NOT EXISTS embeddings (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			import_path TEXT NOT NULL,
+			lang TEXT NOT NULL DEFAULT 'go',
+			text_hash TEXT NOT NULL,
+			embedding BLOB NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(import_path, lang)
+		)`,
+
+		`CREATE INDEX IF NOT EXISTS idx_embeddings_lang ON embeddings(lang)`,
 	}
 
 	for _, migration := range migrations {
@@ -2383,4 +2408,88 @@ func (db *DB) GetPopularPHPPackages(limit int) ([]*PHPPackage, error) {
 		packages = append(packages, p)
 	}
 	return packages, nil
+}
+
+// UpsertEmbedding stores or updates an embedding for a package
+func (db *DB) UpsertEmbedding(importPath, lang, textHash string, embedding []float32) error {
+	// Convert float32 slice to bytes
+	embeddingBytes := float32SliceToBytes(embedding)
+
+	_, err := db.conn.Exec(`
+		INSERT INTO embeddings (import_path, lang, text_hash, embedding)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(import_path, lang) DO UPDATE SET
+			text_hash = excluded.text_hash,
+			embedding = excluded.embedding,
+			created_at = CURRENT_TIMESTAMP
+	`, importPath, lang, textHash, embeddingBytes)
+
+	return err
+}
+
+// GetEmbedding retrieves an embedding for a package
+func (db *DB) GetEmbedding(importPath, lang string) (*Embedding, error) {
+	var e Embedding
+	var embeddingBytes []byte
+
+	err := db.conn.QueryRow(`
+		SELECT id, import_path, lang, text_hash, embedding, created_at
+		FROM embeddings WHERE import_path = ? AND lang = ?
+	`, importPath, lang).Scan(&e.ID, &e.ImportPath, &e.Lang, &e.TextHash, &embeddingBytes, &e.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	e.Embedding = bytesToFloat32Slice(embeddingBytes)
+	return &e, nil
+}
+
+// GetAllEmbeddings retrieves all embeddings for a language
+func (db *DB) GetAllEmbeddings(lang string) ([]*Embedding, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, import_path, lang, text_hash, embedding, created_at
+		FROM embeddings WHERE lang = ?
+	`, lang)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var embeddings []*Embedding
+	for rows.Next() {
+		var e Embedding
+		var embeddingBytes []byte
+		if err := rows.Scan(&e.ID, &e.ImportPath, &e.Lang, &e.TextHash, &embeddingBytes, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		e.Embedding = bytesToFloat32Slice(embeddingBytes)
+		embeddings = append(embeddings, &e)
+	}
+	return embeddings, nil
+}
+
+// float32SliceToBytes converts a float32 slice to bytes using little-endian encoding
+func float32SliceToBytes(floats []float32) []byte {
+	buf := make([]byte, len(floats)*4)
+	for i, f := range floats {
+		binary.LittleEndian.PutUint32(buf[i*4:], math.Float32bits(f))
+	}
+	return buf
+}
+
+// bytesToFloat32Slice converts bytes to a float32 slice using little-endian encoding
+func bytesToFloat32Slice(buf []byte) []float32 {
+	if len(buf)%4 != 0 {
+		return nil
+	}
+	floats := make([]float32, len(buf)/4)
+	for i := range floats {
+		bits := binary.LittleEndian.Uint32(buf[i*4:])
+		floats[i] = math.Float32frombits(bits)
+	}
+	return floats
 }

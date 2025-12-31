@@ -152,6 +152,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 		s.aiService.Enable(ai.FlagExplainCode)
 		s.aiService.Enable(ai.FlagLicenseSummary)
 		s.aiService.Enable(ai.FlagEnhanceDocs)
+		s.aiService.Enable(ai.FlagSemanticSearch)
 		log.Printf("AI service initialized")
 	}
 
@@ -545,6 +546,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/explain", s.rateLimiter.Middleware(s.handleExplain))
 	mux.HandleFunc("/api/license-summary", s.rateLimiter.Middleware(s.handleLicenseSummary))
 	mux.HandleFunc("/api/enhance-doc", s.rateLimiter.Middleware(s.handleEnhanceDoc))
+	mux.HandleFunc("/api/semantic-search", s.rateLimiter.Middleware(s.handleSemanticSearch))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2594,6 +2596,117 @@ func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"explanation": explanation,
+	})
+}
+
+// handleSemanticSearch handles natural language search using embeddings
+func (s *Server) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	lang := r.URL.Query().Get("lang")
+	if lang == "" {
+		lang = "go"
+	}
+	limitStr := r.URL.Query().Get("limit")
+	limit := 20
+	if limitStr != "" {
+		if l, err := fmt.Sscanf(limitStr, "%d", &limit); err == nil && l > 0 {
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if query == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": []map[string]interface{}{},
+			"error":   "query is required",
+		})
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagSemanticSearch) {
+		// Fall back to FTS search
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results":  []map[string]interface{}{},
+			"error":    "semantic search not available, use /api/search instead",
+			"fallback": "/api/search?q=" + query,
+		})
+		return
+	}
+
+	if s.db == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": []map[string]interface{}{},
+			"error":   "database not available",
+		})
+		return
+	}
+
+	// Generate embedding for the query
+	queryEmbedding, err := s.aiService.GenerateEmbedding(query)
+	if err != nil {
+		log.Printf("Error generating query embedding: %v", err)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": []map[string]interface{}{},
+			"error":   "failed to process query",
+		})
+		return
+	}
+
+	// Get all embeddings for the language
+	embeddings, err := s.db.GetAllEmbeddings(lang)
+	if err != nil {
+		log.Printf("Error fetching embeddings: %v", err)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": []map[string]interface{}{},
+			"error":   "database error",
+		})
+		return
+	}
+
+	// Calculate similarity scores
+	type scoredResult struct {
+		ImportPath string
+		Score      float32
+	}
+	var scored []scoredResult
+	for _, emb := range embeddings {
+		score := ai.CosineSimilarity(queryEmbedding, emb.Embedding)
+		if score > 0.5 { // Only include results above threshold
+			scored = append(scored, scoredResult{
+				ImportPath: emb.ImportPath,
+				Score:      score,
+			})
+		}
+	}
+
+	// Sort by score descending
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].Score > scored[j].Score
+	})
+
+	// Limit results
+	if len(scored) > limit {
+		scored = scored[:limit]
+	}
+
+	// Build response with package details
+	var results []map[string]interface{}
+	for _, s := range scored {
+		results = append(results, map[string]interface{}{
+			"import_path": s.ImportPath,
+			"score":       s.Score,
+			"lang":        lang,
+		})
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"query":   query,
+		"results": results,
+		"count":   len(results),
 	})
 }
 
