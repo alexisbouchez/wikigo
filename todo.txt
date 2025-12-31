@@ -127,7 +127,7 @@
 
 ### Future Improvements
 - [ ] Add caching for search results
-- [ ] Add web handler tests
+- [x] Add web handler tests
 - [ ] Add rate limiting for API endpoints
 - [ ] Implement search result relevance scoring
 
