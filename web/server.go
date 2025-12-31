@@ -153,6 +153,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 		s.aiService.Enable(ai.FlagLicenseSummary)
 		s.aiService.Enable(ai.FlagEnhanceDocs)
 		s.aiService.Enable(ai.FlagSemanticSearch)
+		s.aiService.Enable(ai.FlagQueryUnderstanding)
 		log.Printf("AI service initialized")
 	}
 
@@ -547,6 +548,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/license-summary", s.rateLimiter.Middleware(s.handleLicenseSummary))
 	mux.HandleFunc("/api/enhance-doc", s.rateLimiter.Middleware(s.handleEnhanceDoc))
 	mux.HandleFunc("/api/semantic-search", s.rateLimiter.Middleware(s.handleSemanticSearch))
+	mux.HandleFunc("/api/understand-query", s.rateLimiter.Middleware(s.handleUnderstandQuery))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2707,6 +2709,81 @@ func (s *Server) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 		"query":   query,
 		"results": results,
 		"count":   len(results),
+	})
+}
+
+// handleUnderstandQuery handles AI-powered query interpretation
+func (s *Server) handleUnderstandQuery(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if query == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "query is required",
+		})
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagQueryUnderstanding) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":          "query understanding not available",
+			"original_query": query,
+			"keywords":       []string{query},
+		})
+		return
+	}
+
+	// Get query understanding
+	understanding, err := s.aiService.UnderstandQuery(query)
+	if err != nil {
+		log.Printf("Error understanding query: %v", err)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":          "failed to understand query",
+			"original_query": query,
+			"keywords":       []string{query},
+		})
+		return
+	}
+
+	// If we have a database, also search for suggested packages
+	var suggestedPackages []map[string]interface{}
+	if s.db != nil && len(understanding.Keywords) > 0 {
+		// Search using the first keyword
+		for _, keyword := range understanding.Keywords[:min(2, len(understanding.Keywords))] {
+			pkgs, err := s.db.SearchPackages(keyword, 5)
+			if err == nil {
+				for _, pkg := range pkgs {
+					suggestedPackages = append(suggestedPackages, map[string]interface{}{
+						"import_path": pkg.ImportPath,
+						"name":        pkg.Name,
+						"synopsis":    pkg.Synopsis,
+						"matched_keyword": keyword,
+					})
+				}
+			}
+		}
+	}
+
+	// Deduplicate suggested packages
+	seen := make(map[string]bool)
+	var uniquePackages []map[string]interface{}
+	for _, pkg := range suggestedPackages {
+		path := pkg["import_path"].(string)
+		if !seen[path] {
+			seen[path] = true
+			uniquePackages = append(uniquePackages, pkg)
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"original_query":     understanding.OriginalQuery,
+		"intent":             understanding.Intent,
+		"keywords":           understanding.Keywords,
+		"suggested_queries":  understanding.SuggestedQueries,
+		"related_topics":     understanding.RelatedTopics,
+		"suggested_packages": uniquePackages,
 	})
 }
 

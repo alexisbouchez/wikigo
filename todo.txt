@@ -161,9 +161,11 @@
   - Embeddings table in database (db/db.go)
   - API endpoint /api/semantic-search
   - Cosine similarity scoring
-- [ ] Query understanding
-  - Interpret vague queries
-  - Suggest related packages
+- [x] Query understanding
+  - AI interprets vague queries (ai/service.go UnderstandQuery)
+  - Returns intent, keywords, suggested queries, related topics
+  - API endpoint /api/understand-query
+  - Suggests related packages from keyword search
 
 #### Code Examples
 - [ ] Auto-generate usage examples for functions

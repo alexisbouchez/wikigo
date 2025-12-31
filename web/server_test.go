@@ -518,6 +518,64 @@ func TestHandleSemanticSearch_WithQuery(t *testing.T) {
 	}
 }
 
+func TestHandleUnderstandQuery_EmptyQuery(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/understand-query", nil)
+	w := httptest.NewRecorder()
+
+	s.handleUnderstandQuery(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Errorf("failed to parse JSON: %v", err)
+	}
+
+	if result["error"] != "query is required" {
+		t.Errorf("expected error about missing query")
+	}
+}
+
+func TestHandleUnderstandQuery_WithQuery(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/understand-query?q=something+to+make+http+requests", nil)
+	w := httptest.NewRecorder()
+
+	s.handleUnderstandQuery(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	contentType := w.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %s", contentType)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Errorf("failed to parse JSON: %v", err)
+	}
+
+	// Should have original_query or error
+	if result["original_query"] == nil && result["error"] == nil {
+		t.Errorf("expected original_query or error in response")
+	}
+}
+
 func TestHandleRustCrate_Redirect(t *testing.T) {
 	s, err := NewServerWithDB(".", "")
 	if err != nil {

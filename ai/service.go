@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -306,6 +307,109 @@ func (s *Service) GenerateEmbedding(text string) ([]float32, error) {
 		return nil, fmt.Errorf("AI client not initialized")
 	}
 	return s.client.GenerateEmbedding(text)
+}
+
+// QueryUnderstanding represents the AI's interpretation of a search query
+type QueryUnderstanding struct {
+	OriginalQuery   string   `json:"original_query"`
+	Intent          string   `json:"intent"`           // What the user is looking for
+	Keywords        []string `json:"keywords"`         // Key technical terms
+	SuggestedQueries []string `json:"suggested_queries"` // Refined search queries
+	RelatedTopics   []string `json:"related_topics"`   // Related areas to explore
+}
+
+// UnderstandQuery interprets a vague or natural language query
+func (s *Service) UnderstandQuery(query string) (*QueryUnderstanding, error) {
+	systemPrompt := `You are a programming expert helping users find the right packages and libraries.
+Analyze the user's search query and provide:
+1. A clear interpretation of what they're looking for
+2. Key technical keywords to search for
+3. 2-3 refined search queries that would find relevant packages
+4. Related topics they might also be interested in
+
+Respond in JSON format only:
+{
+  "intent": "brief description of what user wants",
+  "keywords": ["keyword1", "keyword2"],
+  "suggested_queries": ["query1", "query2"],
+  "related_topics": ["topic1", "topic2"]
+}`
+
+	userPrompt := fmt.Sprintf("User search query: %s", query)
+
+	response, err := s.GenerateWithCache(FlagQueryUnderstanding, systemPrompt, userPrompt, 300)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse JSON response
+	result := &QueryUnderstanding{
+		OriginalQuery: query,
+	}
+
+	// Try to extract JSON from response (handle markdown code blocks)
+	jsonStr := response
+	if idx := findJSONStart(response); idx >= 0 {
+		jsonStr = response[idx:]
+		if end := findJSONEnd(jsonStr); end > 0 {
+			jsonStr = jsonStr[:end+1]
+		}
+	}
+
+	// Parse the JSON
+	var parsed struct {
+		Intent          string   `json:"intent"`
+		Keywords        []string `json:"keywords"`
+		SuggestedQueries []string `json:"suggested_queries"`
+		RelatedTopics   []string `json:"related_topics"`
+	}
+
+	if err := parseJSON(jsonStr, &parsed); err != nil {
+		// If parsing fails, use the raw response as intent
+		result.Intent = response
+		result.Keywords = []string{query}
+		result.SuggestedQueries = []string{query}
+		return result, nil
+	}
+
+	result.Intent = parsed.Intent
+	result.Keywords = parsed.Keywords
+	result.SuggestedQueries = parsed.SuggestedQueries
+	result.RelatedTopics = parsed.RelatedTopics
+
+	return result, nil
+}
+
+// findJSONStart finds the start of a JSON object in a string
+func findJSONStart(s string) int {
+	for i, c := range s {
+		if c == '{' {
+			return i
+		}
+	}
+	return -1
+}
+
+// findJSONEnd finds the matching closing brace
+func findJSONEnd(s string) int {
+	depth := 0
+	for i, c := range s {
+		if c == '{' {
+			depth++
+		} else if c == '}' {
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// parseJSON attempts to parse JSON into a struct
+func parseJSON(s string, v interface{}) error {
+	// Simple JSON unmarshal
+	return json.Unmarshal([]byte(s), v)
 }
 
 // CosineSimilarity computes cosine similarity between two vectors
