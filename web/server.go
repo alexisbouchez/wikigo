@@ -118,6 +118,7 @@ type Server struct {
 	db          *db.DB        // optional database for indexing
 	aiService   *ai.Service   // optional AI service for code explanations
 	searchCache *Cache        // cache for search results
+	rateLimiter *RateLimiter  // rate limiter for API endpoints
 }
 
 // NewServer creates a new documentation server
@@ -130,7 +131,8 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 	s := &Server{
 		packages:    make(map[string]*PackageDoc),
 		dataDir:     dataDir,
-		searchCache: NewCache(5 * time.Minute), // 5 minute TTL for search results
+		searchCache: NewCache(5 * time.Minute),              // 5 minute TTL for search results
+		rateLimiter: NewRateLimiter(100, time.Minute, 200),  // 100 req/min, burst of 200
 	}
 
 	// Open database if path provided
@@ -528,8 +530,8 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Routes
 	mux.HandleFunc("/", s.handleHome)
 	mux.HandleFunc("/search", s.handleSearch)
-	mux.HandleFunc("/api/", s.handleAPI)
-	mux.HandleFunc("/badge/", s.handleBadge)
+	mux.HandleFunc("/api/", s.rateLimiter.Middleware(s.handleAPI))
+	mux.HandleFunc("/badge/", s.rateLimiter.Middleware(s.handleBadge))
 	mux.HandleFunc("/license/", s.handleLicense)
 	mux.HandleFunc("/imports/", s.handleImports)
 	mux.HandleFunc("/mod/", s.handleModule)
@@ -538,7 +540,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/symbols", s.handleSymbolSearch)
 	mux.HandleFunc("/diff/", s.handleDiff)
 	mux.HandleFunc("/compare/", s.handleCompare)
-	mux.HandleFunc("/api/explain", s.handleExplain)
+	mux.HandleFunc("/api/explain", s.rateLimiter.Middleware(s.handleExplain))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
