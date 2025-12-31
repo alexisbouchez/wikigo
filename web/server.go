@@ -154,6 +154,7 @@ func NewServerWithDB(dataDir, dbPath string) (*Server, error) {
 		s.aiService.Enable(ai.FlagEnhanceDocs)
 		s.aiService.Enable(ai.FlagSemanticSearch)
 		s.aiService.Enable(ai.FlagQueryUnderstanding)
+		s.aiService.Enable(ai.FlagAutoExamples)
 		log.Printf("AI service initialized")
 	}
 
@@ -549,6 +550,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/enhance-doc", s.rateLimiter.Middleware(s.handleEnhanceDoc))
 	mux.HandleFunc("/api/semantic-search", s.rateLimiter.Middleware(s.handleSemanticSearch))
 	mux.HandleFunc("/api/understand-query", s.rateLimiter.Middleware(s.handleUnderstandQuery))
+	mux.HandleFunc("/api/generate-example", s.rateLimiter.Middleware(s.handleGenerateExample))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2785,6 +2787,81 @@ func (s *Server) handleUnderstandQuery(w http.ResponseWriter, r *http.Request) {
 		"related_topics":     understanding.RelatedTopics,
 		"suggested_packages": uniquePackages,
 	})
+}
+
+// handleGenerateExample handles AI-powered code example generation
+func (s *Server) handleGenerateExample(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if AI service is available
+	if s.aiService == nil || !s.aiService.IsEnabled(ai.FlagAutoExamples) {
+		http.Error(w, "Example generation service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		FunctionName string `json:"function_name"`
+		Signature    string `json:"signature"`
+		Doc          string `json:"doc"`
+		ImportPath   string `json:"import_path"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.FunctionName == "" || req.Signature == "" {
+		http.Error(w, "function_name and signature are required", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Check if example exists in database
+	if s.db != nil {
+		cached, err := s.db.GetGeneratedExample(req.ImportPath, req.FunctionName)
+		if err == nil && cached != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"function_name": cached.FunctionName,
+				"import_path":   cached.ImportPath,
+				"description":   cached.Description,
+				"imports":       cached.Imports,
+				"code":          cached.Code,
+				"cached":        true,
+			})
+			return
+		}
+	}
+
+	// Generate example with AI
+	example, err := s.aiService.GenerateExample(req.FunctionName, req.Signature, req.Doc, req.ImportPath)
+	if err != nil {
+		log.Printf("Error generating example: %v", err)
+		http.Error(w, "Failed to generate example", http.StatusInternalServerError)
+		return
+	}
+
+	// Store in database for future requests
+	if s.db != nil {
+		dbExample := &db.GeneratedExample{
+			ImportPath:   req.ImportPath,
+			FunctionName: req.FunctionName,
+			Signature:    req.Signature,
+			Description:  example.Description,
+			Imports:      example.Imports,
+			Code:         example.Code,
+		}
+		if err := s.db.UpsertGeneratedExample(dbExample); err != nil {
+			log.Printf("Error caching example: %v", err)
+		}
+	}
+
+	json.NewEncoder(w).Encode(example)
 }
 
 // handleEnhanceDoc handles AI-powered documentation enhancement

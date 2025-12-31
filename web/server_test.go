@@ -576,6 +576,76 @@ func TestHandleUnderstandQuery_WithQuery(t *testing.T) {
 	}
 }
 
+func TestHandleGenerateExample_MethodNotAllowed(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/generate-example", nil)
+	w := httptest.NewRecorder()
+
+	s.handleGenerateExample(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
+	}
+}
+
+func TestHandleGenerateExample_InvalidJSON(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("POST", "/api/generate-example", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+
+	s.handleGenerateExample(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleGenerateExample_MissingFields(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("POST", "/api/generate-example", strings.NewReader(`{"function_name": "Foo"}`))
+	w := httptest.NewRecorder()
+
+	s.handleGenerateExample(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleGenerateExample_ValidRequest(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	body := `{"function_name": "ReadFile", "signature": "func ReadFile(name string) ([]byte, error)", "doc": "reads the file", "import_path": "os"}`
+	req := httptest.NewRequest("POST", "/api/generate-example", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleGenerateExample(w, req)
+
+	// Should get 200 (with AI service) or 503 (without AI service)
+	if w.Code != http.StatusOK && w.Code != http.StatusServiceUnavailable && w.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 200, 503, or 500, got %d", w.Code)
+	}
+}
+
 func TestHandleRustCrate_Redirect(t *testing.T) {
 	s, err := NewServerWithDB(".", "")
 	if err != nil {

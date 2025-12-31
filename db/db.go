@@ -103,6 +103,18 @@ type Embedding struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// GeneratedExample represents an AI-generated code example
+type GeneratedExample struct {
+	ID           int64     `json:"id"`
+	ImportPath   string    `json:"import_path"`
+	FunctionName string    `json:"function_name"`
+	Signature    string    `json:"signature"`
+	Description  string    `json:"description"`
+	Imports      string    `json:"imports"`
+	Code         string    `json:"code"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 // Open opens or creates a SQLite database
 func Open(path string) (*DB, error) {
 	conn, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_busy_timeout=5000")
@@ -678,6 +690,20 @@ func (db *DB) migrate() error {
 		)`,
 
 		`CREATE INDEX IF NOT EXISTS idx_embeddings_lang ON embeddings(lang)`,
+
+		`CREATE TABLE IF NOT EXISTS generated_examples (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			import_path TEXT NOT NULL,
+			function_name TEXT NOT NULL,
+			signature TEXT NOT NULL,
+			description TEXT,
+			imports TEXT,
+			code TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(import_path, function_name)
+		)`,
+
+		`CREATE INDEX IF NOT EXISTS idx_examples_import_path ON generated_examples(import_path)`,
 	}
 
 	for _, migration := range migrations {
@@ -2492,4 +2518,64 @@ func bytesToFloat32Slice(buf []byte) []float32 {
 		floats[i] = math.Float32frombits(bits)
 	}
 	return floats
+}
+
+// UpsertGeneratedExample stores or updates a generated code example
+func (db *DB) UpsertGeneratedExample(example *GeneratedExample) error {
+	_, err := db.conn.Exec(`
+		INSERT INTO generated_examples (import_path, function_name, signature, description, imports, code)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(import_path, function_name) DO UPDATE SET
+			signature = excluded.signature,
+			description = excluded.description,
+			imports = excluded.imports,
+			code = excluded.code,
+			created_at = CURRENT_TIMESTAMP
+	`, example.ImportPath, example.FunctionName, example.Signature, example.Description, example.Imports, example.Code)
+	return err
+}
+
+// GetGeneratedExample retrieves a generated example for a function
+func (db *DB) GetGeneratedExample(importPath, functionName string) (*GeneratedExample, error) {
+	var example GeneratedExample
+	err := db.conn.QueryRow(`
+		SELECT id, import_path, function_name, signature, description, imports, code, created_at
+		FROM generated_examples
+		WHERE import_path = ? AND function_name = ?
+	`, importPath, functionName).Scan(
+		&example.ID, &example.ImportPath, &example.FunctionName,
+		&example.Signature, &example.Description, &example.Imports,
+		&example.Code, &example.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &example, nil
+}
+
+// GetGeneratedExamplesForPackage retrieves all generated examples for a package
+func (db *DB) GetGeneratedExamplesForPackage(importPath string) ([]*GeneratedExample, error) {
+	rows, err := db.conn.Query(`
+		SELECT id, import_path, function_name, signature, description, imports, code, created_at
+		FROM generated_examples
+		WHERE import_path = ?
+		ORDER BY function_name
+	`, importPath)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var examples []*GeneratedExample
+	for rows.Next() {
+		var e GeneratedExample
+		if err := rows.Scan(&e.ID, &e.ImportPath, &e.FunctionName, &e.Signature, &e.Description, &e.Imports, &e.Code, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		examples = append(examples, &e)
+	}
+	return examples, nil
 }

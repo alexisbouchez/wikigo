@@ -412,6 +412,78 @@ func parseJSON(s string, v interface{}) error {
 	return json.Unmarshal([]byte(s), v)
 }
 
+// GeneratedExample represents an AI-generated code example
+type GeneratedExample struct {
+	FunctionName string `json:"function_name"`
+	ImportPath   string `json:"import_path"`
+	Code         string `json:"code"`
+	Description  string `json:"description"`
+	Imports      string `json:"imports"`
+}
+
+// GenerateExample generates a usage example for a function
+func (s *Service) GenerateExample(functionName, signature, doc, importPath string) (*GeneratedExample, error) {
+	systemPrompt := `You are a Go expert. Generate a minimal, runnable example showing how to use the given function.
+The example should:
+1. Be as simple as possible while showing typical usage
+2. Include necessary imports
+3. Handle errors appropriately
+4. Be ready to run in Go Playground
+
+Respond in JSON format only:
+{
+  "description": "Brief description of what the example does",
+  "imports": "import statements needed (without the import keyword)",
+  "code": "the main function code"
+}`
+
+	userPrompt := fmt.Sprintf(`Generate a usage example for this Go function:
+
+Package: %s
+Function: %s
+Signature: %s
+Documentation: %s`, importPath, functionName, signature, doc)
+
+	response, err := s.GenerateWithCache(FlagAutoExamples, systemPrompt, userPrompt, 500)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse JSON response
+	result := &GeneratedExample{
+		FunctionName: functionName,
+		ImportPath:   importPath,
+	}
+
+	// Extract JSON from response
+	jsonStr := response
+	if idx := findJSONStart(response); idx >= 0 {
+		jsonStr = response[idx:]
+		if end := findJSONEnd(jsonStr); end > 0 {
+			jsonStr = jsonStr[:end+1]
+		}
+	}
+
+	var parsed struct {
+		Description string `json:"description"`
+		Imports     string `json:"imports"`
+		Code        string `json:"code"`
+	}
+
+	if err := parseJSON(jsonStr, &parsed); err != nil {
+		// If parsing fails, use the raw response as code
+		result.Code = response
+		result.Description = "Example usage"
+		return result, nil
+	}
+
+	result.Description = parsed.Description
+	result.Imports = parsed.Imports
+	result.Code = parsed.Code
+
+	return result, nil
+}
+
 // CosineSimilarity computes cosine similarity between two vectors
 func CosineSimilarity(a, b []float32) float32 {
 	if len(a) != len(b) || len(a) == 0 {

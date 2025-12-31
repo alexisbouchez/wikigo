@@ -168,9 +168,10 @@
   - Suggests related packages from keyword search
 
 #### Code Examples
-- [ ] Auto-generate usage examples for functions
-  - Simple example showing typical usage
-  - Store in database, show in UI alongside docs
+- [x] Auto-generate usage examples for functions
+  - Simple example showing typical usage (ai/service.go GenerateExample)
+  - Store in database (db/db.go generated_examples table)
+  - API endpoint /api/generate-example with DB caching
 - [ ] Generate runnable playground links
   - Create minimal working examples
   - Auto-populate Go Playground
