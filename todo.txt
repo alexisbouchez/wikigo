@@ -193,9 +193,11 @@
   - Caching via AI service cache layer
 
 #### Quality & Safety
-- [ ] Hallucination detection
-  - Validate generated content against actual code
-  - Flag suspicious/incorrect generations
+- [x] Hallucination detection
+  - ValidateGeneratedContent function in ai/service.go
+  - Checks for AI self-references, uncertainty phrases, syntax errors
+  - API endpoint /api/validate returns confidence score
+  - Tests in ai/service_test.go and web/server_test.go
 - [ ] Content moderation
   - Filter inappropriate AI outputs
   - Human review queue for generated docs

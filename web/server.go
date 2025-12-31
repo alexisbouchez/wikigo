@@ -553,6 +553,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("/api/understand-query", s.rateLimiter.Middleware(s.handleUnderstandQuery))
 	mux.HandleFunc("/api/generate-example", s.rateLimiter.Middleware(s.handleGenerateExample))
 	mux.HandleFunc("/api/translate", s.rateLimiter.Middleware(s.handleTranslate))
+	mux.HandleFunc("/api/validate", s.rateLimiter.Middleware(s.handleValidate))
 	mux.HandleFunc("/crates.io/", s.handleRustCrate)
 	mux.HandleFunc("/npm/", s.handleJSPackage)
 	mux.HandleFunc("/pypi/", s.handlePythonPackage)
@@ -2925,6 +2926,44 @@ func (s *Server) handleTranslate(w http.ResponseWriter, r *http.Request) {
 		"translated": translated,
 		"language":   req.Language,
 	})
+}
+
+// handleValidate handles hallucination detection for AI-generated content
+func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Content         string   `json:"content"`
+		ExpectedSymbols []string `json:"expected_symbols,omitempty"`
+		ValidImports    []string `json:"valid_imports,omitempty"`
+		IsGoCode        bool     `json:"is_go_code,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Content == "" {
+		http.Error(w, "content is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate content
+	context := ai.ValidationContext{
+		ExpectedSymbols: req.ExpectedSymbols,
+		ValidImports:    req.ValidImports,
+		IsGoCode:        req.IsGoCode,
+	}
+
+	result := ai.ValidateGeneratedContent(req.Content, context)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
 
 // handleEnhanceDoc handles AI-powered documentation enhancement

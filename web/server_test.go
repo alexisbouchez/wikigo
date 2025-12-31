@@ -716,6 +716,114 @@ func TestHandleTranslate_ValidRequest(t *testing.T) {
 	}
 }
 
+func TestHandleValidate_MethodNotAllowed(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("GET", "/api/validate", nil)
+	w := httptest.NewRecorder()
+
+	s.handleValidate(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
+	}
+}
+
+func TestHandleValidate_InvalidJSON(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("POST", "/api/validate", strings.NewReader("not json"))
+	w := httptest.NewRecorder()
+
+	s.handleValidate(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleValidate_MissingContent(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	req := httptest.NewRequest("POST", "/api/validate", strings.NewReader(`{}`))
+	w := httptest.NewRecorder()
+
+	s.handleValidate(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleValidate_ValidContent(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	body := `{"content": "ReadFile reads the named file.", "is_go_code": false}`
+	req := httptest.NewRequest("POST", "/api/validate", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleValidate(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if result["is_valid"] != true {
+		t.Errorf("expected is_valid to be true")
+	}
+	if result["confidence"].(float64) < 0.9 {
+		t.Errorf("expected confidence >= 0.9, got %v", result["confidence"])
+	}
+}
+
+func TestHandleValidate_SuspiciousContent(t *testing.T) {
+	s, err := NewServerWithDB(".", "")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+	defer s.Close()
+
+	body := `{"content": "As an AI, I cannot determine what this function does."}`
+	req := httptest.NewRequest("POST", "/api/validate", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleValidate(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if result["is_valid"] != false {
+		t.Errorf("expected is_valid to be false for AI self-reference")
+	}
+}
+
 func TestHandleRustCrate_Redirect(t *testing.T) {
 	s, err := NewServerWithDB(".", "")
 	if err != nil {

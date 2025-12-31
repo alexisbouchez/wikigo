@@ -310,6 +310,181 @@ func IsDocSparse(doc string) bool {
 	return words < 5
 }
 
+// ValidationResult represents the result of hallucination detection
+type ValidationResult struct {
+	IsValid       bool     `json:"is_valid"`
+	Confidence    float64  `json:"confidence"`
+	Issues        []string `json:"issues,omitempty"`
+	Warnings      []string `json:"warnings,omitempty"`
+	ValidatedAt   string   `json:"validated_at"`
+}
+
+// ValidateGeneratedContent checks AI-generated content for potential hallucinations
+func ValidateGeneratedContent(generated string, context ValidationContext) *ValidationResult {
+	result := &ValidationResult{
+		IsValid:     true,
+		Confidence:  1.0,
+		ValidatedAt: time.Now().Format(time.RFC3339),
+	}
+
+	// Check for empty content
+	if strings.TrimSpace(generated) == "" {
+		result.IsValid = false
+		result.Confidence = 0
+		result.Issues = append(result.Issues, "generated content is empty")
+		return result
+	}
+
+	// Check for known invalid patterns
+	invalidPatterns := []string{
+		"I don't know",
+		"I'm not sure",
+		"I cannot",
+		"as an AI",
+		"as a language model",
+	}
+	for _, pattern := range invalidPatterns {
+		if strings.Contains(strings.ToLower(generated), strings.ToLower(pattern)) {
+			result.Confidence -= 0.3
+			result.Warnings = append(result.Warnings, "contains uncertainty phrase: "+pattern)
+		}
+	}
+
+	// Validate against context if provided
+	if context.ExpectedSymbols != nil {
+		for _, symbol := range context.ExpectedSymbols {
+			if !strings.Contains(generated, symbol) {
+				result.Confidence -= 0.1
+				result.Warnings = append(result.Warnings, "missing expected symbol: "+symbol)
+			}
+		}
+	}
+
+	// Check for fabricated function calls (common hallucination)
+	if context.ValidImports != nil {
+		// Extract potential import references from generated content
+		words := strings.Fields(generated)
+		for _, word := range words {
+			// Check for package.Function patterns
+			if strings.Contains(word, ".") && !strings.HasPrefix(word, "//") {
+				parts := strings.Split(strings.Trim(word, "(){}[].,;:"), ".")
+				if len(parts) >= 2 {
+					pkg := parts[0]
+					// If it looks like a package reference but isn't in valid imports
+					if isLikelyPackage(pkg) && !contains(context.ValidImports, pkg) {
+						result.Confidence -= 0.15
+						result.Warnings = append(result.Warnings, "potentially invalid import: "+pkg)
+					}
+				}
+			}
+		}
+	}
+
+	// Check code syntax if it's supposed to be Go code
+	if context.IsGoCode {
+		syntaxIssues := checkGoSyntax(generated)
+		for _, issue := range syntaxIssues {
+			result.Confidence -= 0.1
+			result.Warnings = append(result.Warnings, issue)
+		}
+	}
+
+	// Determine validity based on confidence
+	if result.Confidence < 0.5 {
+		result.IsValid = false
+		result.Issues = append(result.Issues, "low confidence score indicates potential hallucination")
+	}
+
+	// Clamp confidence to [0, 1]
+	if result.Confidence < 0 {
+		result.Confidence = 0
+	}
+	if result.Confidence > 1 {
+		result.Confidence = 1
+	}
+
+	return result
+}
+
+// ValidationContext provides context for validating generated content
+type ValidationContext struct {
+	ExpectedSymbols []string // Symbols that should appear in the output
+	ValidImports    []string // Valid import package names
+	IsGoCode        bool     // Whether the content is expected to be Go code
+	OriginalDoc     string   // Original documentation for comparison
+}
+
+// isLikelyPackage checks if a string looks like a Go package name
+func isLikelyPackage(s string) bool {
+	if len(s) == 0 || len(s) > 20 {
+		return false
+	}
+	// Package names are lowercase and alphanumeric
+	for _, c := range s {
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// checkGoSyntax performs basic Go syntax validation
+func checkGoSyntax(code string) []string {
+	var issues []string
+
+	// Check for balanced braces
+	braceCount := 0
+	parenCount := 0
+	bracketCount := 0
+
+	for _, c := range code {
+		switch c {
+		case '{':
+			braceCount++
+		case '}':
+			braceCount--
+		case '(':
+			parenCount++
+		case ')':
+			parenCount--
+		case '[':
+			bracketCount++
+		case ']':
+			bracketCount--
+		}
+	}
+
+	if braceCount != 0 {
+		issues = append(issues, "unbalanced braces")
+	}
+	if parenCount != 0 {
+		issues = append(issues, "unbalanced parentheses")
+	}
+	if bracketCount != 0 {
+		issues = append(issues, "unbalanced brackets")
+	}
+
+	// Check for common syntax errors
+	if strings.Contains(code, ";;") {
+		issues = append(issues, "double semicolon detected")
+	}
+	if strings.Contains(code, "{{") && !strings.Contains(code, "}}") {
+		issues = append(issues, "unmatched double braces")
+	}
+
+	return issues
+}
+
 // GenerateEmbedding generates an embedding for text (used for semantic search)
 func (s *Service) GenerateEmbedding(text string) ([]float32, error) {
 	if !s.IsEnabled(FlagSemanticSearch) {
